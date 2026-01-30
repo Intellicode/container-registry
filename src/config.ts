@@ -22,6 +22,14 @@ export interface RegistryConfig {
   log: LogConfig;
 }
 
+function parsePort(portValue: string | undefined, defaultPort: number): number {
+  const parsed = parseInt(portValue ?? "", 10);
+  if (isNaN(parsed) || parsed < 0 || parsed > 65535) {
+    return defaultPort;
+  }
+  return parsed;
+}
+
 /**
  * Loads configuration from environment variables with defaults.
  */
@@ -29,7 +37,7 @@ export function loadConfig(): RegistryConfig {
   return {
     server: {
       host: Deno.env.get("REGISTRY_HOST") ?? "0.0.0.0",
-      port: parseInt(Deno.env.get("REGISTRY_PORT") ?? "15000", 10),
+      port: parsePort(Deno.env.get("REGISTRY_PORT"), 15000),
     },
     storage: {
       rootDirectory: Deno.env.get("REGISTRY_STORAGE_PATH") ?? "./data",

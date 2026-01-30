@@ -55,7 +55,7 @@ export interface ImageManifest {
  */
 export interface ImageIndex {
   schemaVersion: 2;
-  mediaType: string;
+  mediaType: ManifestMediaType;
   manifests: ManifestDescriptor[];
   annotations?: Record<string, string>;
 }
