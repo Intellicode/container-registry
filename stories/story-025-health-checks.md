@@ -98,14 +98,14 @@ Content-Type: application/json
 livenessProbe:
   httpGet:
     path: /health
-    port: 5000
+    port: 15000
   initialDelaySeconds: 5
   periodSeconds: 10
 
 readinessProbe:
   httpGet:
     path: /health/ready
-    port: 5000
+    port: 15000
   initialDelaySeconds: 5
   periodSeconds: 10
 ```

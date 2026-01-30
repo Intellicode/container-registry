@@ -44,7 +44,7 @@ Initialize the container registry project with Deno 2.x and Hono framework. Set 
 - [ ] Basic type definitions are created in `src/types/`
 - [ ] `.gitignore` excludes `data/` directory
 - [ ] Server starts successfully with `deno task start`
-- [ ] Server listens on configurable host/port (default: 0.0.0.0:5000)
+- [ ] Server listens on configurable host/port (default: 0.0.0.0:15000)
 
 ## Technical Notes
 
