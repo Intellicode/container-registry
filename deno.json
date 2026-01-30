@@ -1,8 +1,22 @@
 {
+  "name": "container-registry",
+  "version": "0.1.0",
+  "exports": "./main.ts",
   "tasks": {
-    "dev": "deno run --watch main.ts"
+    "start": "deno run --allow-net --allow-read --allow-write --allow-env main.ts",
+    "dev": "deno run --watch --allow-net --allow-read --allow-write --allow-env main.ts",
+    "test": "deno test --allow-net --allow-read --allow-write --allow-env"
   },
   "imports": {
-    "@std/assert": "jsr:@std/assert@1"
+    "@std/assert": "jsr:@std/assert@1",
+    "hono": "jsr:@hono/hono@4.11.7",
+    "hono/logger": "jsr:@hono/hono@4.11.7/logger"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
   }
 }

@@ -78,5 +78,5 @@ Small (0.5 days)
 
 - All acceptance criteria met
 - Unit tests cover success and unauthorized cases
-- `docker login localhost:5000` successfully authenticates (with auth disabled)
+- `docker login localhost:15000` successfully authenticates (with auth disabled)
 - Integration test verifies endpoint behavior

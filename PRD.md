@@ -349,7 +349,7 @@ interface RegistryConfig {
   // Server settings
   server: {
     host: string;           // Default: "0.0.0.0"
-    port: number;           // Default: 5000
+    port: number;           // Default: 15000
     tls?: {
       cert: string;         // Path to TLS certificate
       key: string;          // Path to TLS private key
@@ -405,7 +405,7 @@ interface RegistryConfig {
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `REGISTRY_HOST` | Listen host | `0.0.0.0` |
-| `REGISTRY_PORT` | Listen port | `5000` |
+| `REGISTRY_PORT` | Listen port | `15000` |
 | `REGISTRY_STORAGE_PATH` | Storage directory | `./data` |
 | `REGISTRY_LOG_LEVEL` | Log level | `info` |
 | `REGISTRY_AUTH_TYPE` | Auth type | `none` |
@@ -550,7 +550,7 @@ COPY . .
 
 RUN deno cache main.ts
 
-EXPOSE 5000
+EXPOSE 15000
 VOLUME ["/data"]
 
 CMD ["run", "--allow-net", "--allow-read", "--allow-write", "main.ts"]

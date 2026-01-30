@@ -76,7 +76,7 @@ deno task compile
 ./registry --config /etc/registry/config.json
 
 # Or with environment variables
-REGISTRY_PORT=5000 REGISTRY_STORAGE_PATH=/data ./registry
+REGISTRY_PORT=15000 REGISTRY_STORAGE_PATH=/data ./registry
 ```
 
 ## Non-Functional Requirements

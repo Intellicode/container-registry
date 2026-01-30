@@ -88,13 +88,13 @@ Deno.test("push and pull image workflow", async () => {
   
   try {
     // Push image using Docker CLI
-    await exec("docker", ["push", "localhost:5000/test:latest"]);
+    await exec("docker", ["push", "localhost:15000/test:latest"]);
     
     // Pull image
-    await exec("docker", ["pull", "localhost:5000/test:latest"]);
+    await exec("docker", ["pull", "localhost:15000/test:latest"]);
     
     // Verify image exists
-    const result = await exec("docker", ["images", "localhost:5000/test:latest"]);
+    const result = await exec("docker", ["images", "localhost:15000/test:latest"]);
     assertStringContains(result, "latest");
   } finally {
     await registry.stop();

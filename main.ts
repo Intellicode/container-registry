@@ -1,8 +1,26 @@
-export function add(a: number, b: number): number {
-  return a + b;
-}
+/**
+ * Container Registry - Entry Point
+ *
+ * A lightweight, self-hosted Docker container registry implementing
+ * the OCI Distribution Specification.
+ */
 
-// Learn more at https://docs.deno.com/runtime/manual/examples/module_metadata#concepts
+import { createApp } from "./src/app.ts";
+import { getConfig } from "./src/config.ts";
+
 if (import.meta.main) {
-  console.log("Add 2 + 3 =", add(2, 3));
+  const config = getConfig();
+  const app = createApp();
+
+  console.log(
+    `Container Registry starting on ${config.server.host}:${config.server.port}`,
+  );
+
+  Deno.serve(
+    {
+      hostname: config.server.host,
+      port: config.server.port,
+    },
+    app.fetch,
+  );
 }

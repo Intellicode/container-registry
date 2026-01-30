@@ -43,7 +43,7 @@ deno task validate-config /etc/registry/config.json
 # Configuration valid!
 # 
 # Summary:
-#   Server: 0.0.0.0:5000
+#   Server: 0.0.0.0:15000
 #   Storage: /data
 #   Auth: basic
 #   TLS: enabled

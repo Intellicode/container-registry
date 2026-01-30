@@ -28,7 +28,7 @@ Add TLS support to the registry server for secure HTTPS connections. Support cus
 - [ ] Environment variables:
   - `REGISTRY_TLS_CERT`
   - `REGISTRY_TLS_KEY`
-- [ ] Configurable listen port (default 443 for HTTPS, 5000 for HTTP)
+- [ ] Configurable listen port (default 443 for HTTPS, 15000 for HTTP)
 
 ## Technical Notes
 

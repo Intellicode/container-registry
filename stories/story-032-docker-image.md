@@ -58,7 +58,7 @@ RUN mkdir -p /data && chown registry:registry /data
 
 USER registry
 
-EXPOSE 5000
+EXPOSE 15000
 
 VOLUME ["/data", "/etc/registry"]
 
@@ -77,7 +77,7 @@ services:
   registry:
     image: container-registry:latest
     ports:
-      - "5000:5000"
+      - "15000:15000"
     volumes:
       - registry-data:/data
       - ./config.json:/etc/registry/config.json:ro
@@ -99,7 +99,7 @@ docker build -t container-registry:latest .
 docker build -t container-registry:1.0.0 .
 
 # Run container
-docker run -d -p 5000:5000 -v registry-data:/data container-registry:latest
+docker run -d -p 15000:15000 -v registry-data:/data container-registry:latest
 ```
 
 ## Dependencies
