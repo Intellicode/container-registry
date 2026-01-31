@@ -2,7 +2,7 @@
  * Content Digest Service
  * 
  * Implements OCI-compliant content digest calculation and verification
- * using SHA-256 algorithm for content-addressable storage.
+ * using SHA-256 (default) and SHA-512 algorithms for content-addressable storage.
  */
 
 /**
