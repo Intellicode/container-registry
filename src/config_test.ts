@@ -109,3 +109,21 @@ Deno.test("config: singleton pattern", () => {
   // Objects are strictly different references, even if content is identical
   assertNotEquals(config1 === config3, true);
 });
+
+Deno.test("config: auth parsing", () => {
+  resetConfig();
+
+  // Test true
+  Deno.env.set("REGISTRY_AUTH_ENABLED", "true");
+  assertEquals(loadConfig().auth.enabled, true);
+
+  // Test TRUE (case insensitive)
+  Deno.env.set("REGISTRY_AUTH_ENABLED", "TRUE");
+  assertEquals(loadConfig().auth.enabled, true);
+
+  // Test false
+  Deno.env.set("REGISTRY_AUTH_ENABLED", "false");
+  assertEquals(loadConfig().auth.enabled, false);
+
+  Deno.env.delete("REGISTRY_AUTH_ENABLED");
+});

@@ -4,12 +4,14 @@
 
 import { type Context, Hono, type Next } from "hono";
 import { logger } from "hono/logger";
+import { createV2Routes } from "./routes/v2.ts";
 
 /**
  * Creates and configures the Hono application.
  */
 export function createApp(): Hono {
-  const app = new Hono();
+  // Set strict: false to allow both /v2 and /v2/ to work
+  const app = new Hono({ strict: false });
 
   // Add request logging middleware
   app.use("*", logger());
@@ -20,11 +22,9 @@ export function createApp(): Hono {
     c.header("Docker-Distribution-API-Version", "registry/2.0");
   });
 
-  // Base endpoint - API version check
-  // Returns 200 OK if the registry implements the V2 API
-  app.get("/v2/", (c: Context) => {
-    return c.json({});
-  });
+  // Mount v2 API routes at /v2
+  // Note: Hono's route() adds the prefix, so routes defined in v2Routes are relative
+  app.route("/v2", createV2Routes());
 
   return app;
 }
