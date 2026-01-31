@@ -40,6 +40,23 @@ Deno.test("calculateDigest - computes correct SHA-256 from string", async () => 
   }
 });
 
+Deno.test("calculateDigest - supports SHA-512 algorithm", async () => {
+  const input = "hello world";
+  const result = await calculateDigest(input, "sha512");
+  
+  // Verify it's a valid SHA-512 digest (128 hex chars)
+  assertEquals(result.startsWith("sha512:"), true);
+  const hash = result.split(":")[1];
+  assertEquals(hash.length, 128);
+  assertEquals(/^[a-f0-9]{128}$/.test(hash), true);
+  
+  // Verify known SHA-512 hash for "hello world"
+  assertEquals(
+    result,
+    "sha512:309ecc489c12d6eb4cc40f50c902f2b4d0ed77ee511a7c7a9bcd3ca86d4cd86f989dd35bc5ff499670da34255b45b0cfd830e81f605dcf7dc5542e93ae9cd76f",
+  );
+});
+
 Deno.test("calculateDigest - computes correct SHA-256 from Uint8Array", async () => {
   const input = "hello world";
   const expected =
@@ -343,7 +360,7 @@ Deno.test("empty content produces known digest", async () => {
   );
 });
 
-Deno.test("streaming doesn't buffer entire content - memory efficient", async () => {
+Deno.test("handles large streams correctly", async () => {
   // Create a large stream (10MB) in chunks
   const chunkSize = 1024 * 100; // 100KB chunks
   const numChunks = 100; // Total 10MB
