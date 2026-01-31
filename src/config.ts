@@ -16,10 +16,16 @@ export interface LogConfig {
   level: "debug" | "info" | "warn" | "error";
 }
 
+export interface AuthConfig {
+  enabled: boolean;
+  realm: string;
+}
+
 export interface RegistryConfig {
   server: ServerConfig;
   storage: StorageConfig;
   log: LogConfig;
+  auth: AuthConfig;
 }
 
 function parsePort(portValue: string | undefined, defaultPort: number): number {
@@ -44,6 +50,10 @@ export function loadConfig(): RegistryConfig {
     },
     log: {
       level: parseLogLevel(Deno.env.get("REGISTRY_LOG_LEVEL")),
+    },
+    auth: {
+      enabled: Deno.env.get("REGISTRY_AUTH_ENABLED")?.toLowerCase() === "true",
+      realm: Deno.env.get("REGISTRY_AUTH_REALM") ?? "Registry",
     },
   };
 }
