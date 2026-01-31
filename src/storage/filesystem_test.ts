@@ -60,13 +60,13 @@ Deno.test("FilesystemStorage - blob operations", async (t) => {
 
   try {
     await t.step("hasBlob returns false for non-existent blob", async () => {
-      const exists = await storage.hasBlob("sha256:nonexistent");
+      const exists = await storage.hasBlob("sha256:0000000000000000000000000000000000000000000000000000000000000000");
       assertEquals(exists, false);
     });
 
     await t.step("putBlob stores a blob", async () => {
       const data = new TextEncoder().encode("test blob content");
-      const digest = "sha256:abc123def456";
+      const digest = "sha256:abc123def456abc123def456abc123def456abc123def456abc123def456abcd";
       const stream = createStream(data);
 
       await storage.putBlob(digest, stream);
@@ -77,7 +77,7 @@ Deno.test("FilesystemStorage - blob operations", async (t) => {
 
     await t.step("getBlob retrieves a stored blob", async () => {
       const data = new TextEncoder().encode("test blob content 2");
-      const digest = "sha256:xyz789";
+      const digest = "sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
       const stream = createStream(data);
 
       await storage.putBlob(digest, stream);
@@ -90,13 +90,13 @@ Deno.test("FilesystemStorage - blob operations", async (t) => {
     });
 
     await t.step("getBlob returns null for non-existent blob", async () => {
-      const stream = await storage.getBlob("sha256:nonexistent");
+      const stream = await storage.getBlob("sha256:0000000000000000000000000000000000000000000000000000000000000000");
       assertEquals(stream, null);
     });
 
     await t.step("getBlobSize returns correct size", async () => {
       const data = new TextEncoder().encode("exactly 25 bytes here!!");
-      const digest = "sha256:size123";
+      const digest = "sha256:9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba";
       const stream = createStream(data);
 
       await storage.putBlob(digest, stream);
@@ -106,13 +106,13 @@ Deno.test("FilesystemStorage - blob operations", async (t) => {
     });
 
     await t.step("getBlobSize returns null for non-existent blob", async () => {
-      const size = await storage.getBlobSize("sha256:nonexistent");
+      const size = await storage.getBlobSize("sha256:0000000000000000000000000000000000000000000000000000000000000000");
       assertEquals(size, null);
     });
 
     await t.step("deleteBlob removes a blob", async () => {
       const data = new TextEncoder().encode("to be deleted");
-      const digest = "sha256:deleteme";
+      const digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
       const stream = createStream(data);
 
       await storage.putBlob(digest, stream);
@@ -125,13 +125,13 @@ Deno.test("FilesystemStorage - blob operations", async (t) => {
     });
 
     await t.step("deleteBlob returns false for non-existent blob", async () => {
-      const deleted = await storage.deleteBlob("sha256:nonexistent");
+      const deleted = await storage.deleteBlob("sha256:0000000000000000000000000000000000000000000000000000000000000000");
       assertEquals(deleted, false);
     });
 
     await t.step("putBlob creates two-level directory structure", async () => {
       const data = new TextEncoder().encode("structure test");
-      const digest = "sha256:abcdef123456";
+      const digest = "sha256:abcdef123456abcdef123456abcdef123456abcdef123456abcdef123456abcd";
       const stream = createStream(data);
 
       await storage.putBlob(digest, stream);
@@ -142,7 +142,7 @@ Deno.test("FilesystemStorage - blob operations", async (t) => {
         "blobs",
         "sha256",
         "ab",
-        "abcdef123456",
+        "abcdef123456abcdef123456abcdef123456abcdef123456abcdef123456abcd",
       );
       const stat = await Deno.stat(expectedPath);
       assertEquals(stat.isFile, true);
@@ -159,7 +159,7 @@ Deno.test("FilesystemStorage - atomic writes", async (t) => {
   try {
     await t.step("putBlob writes atomically", async () => {
       const data = new TextEncoder().encode("atomic write test");
-      const digest = "sha256:atomic123";
+      const digest = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
       // Create a stream that will fail mid-write
       let controllerRef: ReadableStreamDefaultController<Uint8Array> | null =
@@ -215,7 +215,7 @@ Deno.test("FilesystemStorage - large blob streaming", async (t) => {
       // Create a 10MB blob
       const chunkSize = 1024 * 1024; // 1MB
       const numChunks = 10;
-      const digest = "sha256:largeblob123";
+      const digest = "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 
       // Create a stream that yields data in chunks
       let chunkIndex = 0;
@@ -268,7 +268,7 @@ Deno.test("FilesystemStorage - repository layer links", async (t) => {
 
   try {
     await t.step("linkBlob creates a layer link", async () => {
-      const digest = "sha256:layer123";
+      const digest = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
       const repository = "myorg/myimage";
 
       await storage.linkBlob(repository, digest);
@@ -280,7 +280,7 @@ Deno.test("FilesystemStorage - repository layer links", async (t) => {
         repository,
         "_layers",
         "sha256",
-        "layer123",
+        "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
         "link",
       );
       const content = await Deno.readTextFile(linkPath);
@@ -288,7 +288,7 @@ Deno.test("FilesystemStorage - repository layer links", async (t) => {
     });
 
     await t.step("unlinkBlob removes a layer link", async () => {
-      const digest = "sha256:layer456";
+      const digest = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
       const repository = "myorg/myimage";
 
       await storage.linkBlob(repository, digest);
@@ -301,7 +301,7 @@ Deno.test("FilesystemStorage - repository layer links", async (t) => {
         repository,
         "_layers",
         "sha256",
-        "layer456",
+        "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
         "link",
       );
 
@@ -312,7 +312,7 @@ Deno.test("FilesystemStorage - repository layer links", async (t) => {
     });
 
     await t.step("linkBlob supports nested repository names", async () => {
-      const digest = "sha256:nested123";
+      const digest = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
       const repository = "org/team/project/image";
 
       await storage.linkBlob(repository, digest);
@@ -323,7 +323,7 @@ Deno.test("FilesystemStorage - repository layer links", async (t) => {
         repository,
         "_layers",
         "sha256",
-        "nested123",
+        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         "link",
       );
       const exists = await Deno.stat(linkPath);
@@ -341,7 +341,7 @@ Deno.test("FilesystemStorage - manifest operations", async (t) => {
   try {
     await t.step("putManifest stores a manifest by tag", async () => {
       const content = new TextEncoder().encode('{"test": "manifest"}');
-      const digest = "sha256:manifest123";
+      const digest = "sha256:1111111111111111111111111111111111111111111111111111111111111111";
       const repository = "myorg/myimage";
       const tag = "v1.0.0";
 
@@ -373,7 +373,7 @@ Deno.test("FilesystemStorage - manifest operations", async (t) => {
         "_manifests",
         "revisions",
         "sha256",
-        "manifest123",
+        "1111111111111111111111111111111111111111111111111111111111111111",
         "link",
       );
       const revisionContent = await Deno.readTextFile(revisionPath);
@@ -382,7 +382,7 @@ Deno.test("FilesystemStorage - manifest operations", async (t) => {
 
     await t.step("getManifest retrieves a manifest by tag", async () => {
       const content = new TextEncoder().encode('{"tag": "test"}');
-      const digest = "sha256:tagmanifest";
+      const digest = "sha256:2222222222222222222222222222222222222222222222222222222222222222";
       const repository = "myorg/myimage";
       const tag = "latest";
 
@@ -396,7 +396,7 @@ Deno.test("FilesystemStorage - manifest operations", async (t) => {
 
     await t.step("getManifest retrieves a manifest by digest", async () => {
       const content = new TextEncoder().encode('{"digest": "test"}');
-      const digest = "sha256:digestmanifest";
+      const digest = "sha256:3333333333333333333333333333333333333333333333333333333333333333";
       const repository = "myorg/myimage";
 
       await storage.putManifest(repository, digest, content, digest);
@@ -414,7 +414,7 @@ Deno.test("FilesystemStorage - manifest operations", async (t) => {
 
     await t.step("deleteManifest removes a manifest by tag", async () => {
       const content = new TextEncoder().encode('{"delete": "test"}');
-      const digest = "sha256:deletemanifest";
+      const digest = "sha256:4444444444444444444444444444444444444444444444444444444444444444";
       const repository = "myorg/myimage";
       const tag = "todelete";
 
@@ -456,9 +456,9 @@ Deno.test("FilesystemStorage - tag operations", async (t) => {
       const content = new TextEncoder().encode("{}");
       const repository = "myorg/myimage";
 
-      await storage.putManifest(repository, "v1.0.0", content, "sha256:aaa");
-      await storage.putManifest(repository, "v2.0.0", content, "sha256:bbb");
-      await storage.putManifest(repository, "latest", content, "sha256:ccc");
+      await storage.putManifest(repository, "v1.0.0", content, "sha256:aaaa00000000000000000000000000000000000000000000000000000000000a");
+      await storage.putManifest(repository, "v2.0.0", content, "sha256:bbbb00000000000000000000000000000000000000000000000000000000000b");
+      await storage.putManifest(repository, "latest", content, "sha256:cccc00000000000000000000000000000000000000000000000000000000000c");
 
       const tags = await storage.listTags(repository);
       assertEquals(tags.length, 3);
@@ -471,9 +471,9 @@ Deno.test("FilesystemStorage - tag operations", async (t) => {
       const content = new TextEncoder().encode("{}");
       const repository = "myorg/sorted";
 
-      await storage.putManifest(repository, "zebra", content, "sha256:zzz");
-      await storage.putManifest(repository, "alpha", content, "sha256:aaa");
-      await storage.putManifest(repository, "beta", content, "sha256:bbb");
+      await storage.putManifest(repository, "zebra", content, "sha256:ffffffff00000000000000000000000000000000000000000000000000000fff");
+      await storage.putManifest(repository, "alpha", content, "sha256:aaaa00000000000000000000000000000000000000000000000000000000000a");
+      await storage.putManifest(repository, "beta", content, "sha256:bbbb00000000000000000000000000000000000000000000000000000000000b");
 
       const tags = await storage.listTags(repository);
       assertEquals(tags, ["alpha", "beta", "zebra"]);
@@ -496,9 +496,9 @@ Deno.test("FilesystemStorage - repository operations", async (t) => {
     await t.step("listRepositories returns all repositories", async () => {
       const content = new TextEncoder().encode("{}");
 
-      await storage.putManifest("org1/image1", "v1", content, "sha256:aaa");
-      await storage.putManifest("org1/image2", "v1", content, "sha256:bbb");
-      await storage.putManifest("org2/image1", "v1", content, "sha256:ccc");
+      await storage.putManifest("org1/image1", "v1", content, "sha256:aaaa00000000000000000000000000000000000000000000000000000000000a");
+      await storage.putManifest("org1/image2", "v1", content, "sha256:bbbb00000000000000000000000000000000000000000000000000000000000b");
+      await storage.putManifest("org2/image1", "v1", content, "sha256:cccc00000000000000000000000000000000000000000000000000000000000c");
 
       const repos = await storage.listRepositories();
       assertEquals(repos.length, 3);
@@ -514,7 +514,7 @@ Deno.test("FilesystemStorage - repository operations", async (t) => {
         "org/team/project/image",
         "v1",
         content,
-        "sha256:nested123",
+        "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
       );
 
       const repos = await storage.listRepositories();
@@ -529,9 +529,9 @@ Deno.test("FilesystemStorage - repository operations", async (t) => {
       try {
         const content = new TextEncoder().encode("{}");
 
-        await freshStorage.putManifest("zebra/image", "v1", content, "sha256:zzz");
-        await freshStorage.putManifest("alpha/image", "v1", content, "sha256:aaa");
-        await freshStorage.putManifest("beta/image", "v1", content, "sha256:bbb");
+        await freshStorage.putManifest("zebra/image", "v1", content, "sha256:ffffffff00000000000000000000000000000000000000000000000000000fff");
+        await freshStorage.putManifest("alpha/image", "v1", content, "sha256:aaaa00000000000000000000000000000000000000000000000000000000000a");
+        await freshStorage.putManifest("beta/image", "v1", content, "sha256:bbbb00000000000000000000000000000000000000000000000000000000000b");
 
         const repos = await freshStorage.listRepositories();
         assertEquals(repos[0], "alpha/image");
@@ -556,7 +556,7 @@ Deno.test("FilesystemStorage - concurrent access", async (t) => {
 
       for (let i = 0; i < 10; i++) {
         const data = new TextEncoder().encode(`concurrent test ${i}`);
-        const digest = `sha256:concurrent${i}`;
+        const digest = `sha256:666666666666666666666666666666666666666666666666666666666666666${i}`;
         const stream = createStream(data);
         promises.push(storage.putBlob(digest, stream));
       }
@@ -565,7 +565,7 @@ Deno.test("FilesystemStorage - concurrent access", async (t) => {
 
       // Verify all blobs were written
       for (let i = 0; i < 10; i++) {
-        const exists = await storage.hasBlob(`sha256:concurrent${i}`);
+        const exists = await storage.hasBlob(`sha256:666666666666666666666666666666666666666666666666666666666666666${i}`);
         assertEquals(exists, true);
       }
     });
@@ -574,7 +574,7 @@ Deno.test("FilesystemStorage - concurrent access", async (t) => {
       // Write some blobs first
       for (let i = 0; i < 5; i++) {
         const data = new TextEncoder().encode(`initial ${i}`);
-        const digest = `sha256:readwrite${i}`;
+        const digest = `sha256:777777777777777777777777777777777777777777777777777777777777777${i}`;
         const stream = createStream(data);
         await storage.putBlob(digest, stream);
       }
@@ -586,7 +586,7 @@ Deno.test("FilesystemStorage - concurrent access", async (t) => {
       for (let i = 0; i < 5; i++) {
         promises.push(
           (async () => {
-            const stream = await storage.getBlob(`sha256:readwrite${i}`);
+            const stream = await storage.getBlob(`sha256:777777777777777777777777777777777777777777777777777777777777777${i}`);
             if (stream) {
               // Cancel the stream to close the file handle
               await stream.cancel();
@@ -598,7 +598,7 @@ Deno.test("FilesystemStorage - concurrent access", async (t) => {
       // Concurrent writes
       for (let i = 5; i < 10; i++) {
         const data = new TextEncoder().encode(`concurrent ${i}`);
-        const digest = `sha256:readwrite${i}`;
+        const digest = `sha256:777777777777777777777777777777777777777777777777777777777777777${i}`;
         const stream = createStream(data);
         promises.push(storage.putBlob(digest, stream));
       }
@@ -607,7 +607,7 @@ Deno.test("FilesystemStorage - concurrent access", async (t) => {
 
       // Verify all operations succeeded
       for (let i = 0; i < 10; i++) {
-        const exists = await storage.hasBlob(`sha256:readwrite${i}`);
+        const exists = await storage.hasBlob(`sha256:777777777777777777777777777777777777777777777777777777777777777${i}`);
         assertEquals(exists, true);
       }
     });
@@ -631,19 +631,19 @@ Deno.test("FilesystemStorage - error handling", async (t) => {
       await assertRejects(
         async () => await storage.hasBlob("sha256:"),
         Error,
-        "Invalid digest format",
+        "Invalid digest hash",
       );
 
       await assertRejects(
         async () => await storage.hasBlob(":hash"),
         Error,
-        "Invalid digest format",
+        "Invalid digest algorithm",
       );
     });
 
     await t.step("creates directories automatically", async () => {
       const data = new TextEncoder().encode("auto dir test");
-      const digest = "sha256:autodir123";
+      const digest = "sha256:9999999999999999999999999999999999999999999999999999999999999999";
       const stream = createStream(data);
 
       // This should succeed even though directories don't exist
@@ -665,7 +665,7 @@ Deno.test("FilesystemStorage - configurable storage path", async (t) => {
 
     try {
       const data = new TextEncoder().encode("custom path test");
-      const digest = "sha256:custompath";
+      const digest = "sha256:8888888888888888888888888888888888888888888888888888888888888888";
       const stream = createStream(data);
 
       await storage.putBlob(digest, stream);
@@ -675,8 +675,8 @@ Deno.test("FilesystemStorage - configurable storage path", async (t) => {
         customPath,
         "blobs",
         "sha256",
-        "cu",
-        "custompath",
+        "88",
+        "8888888888888888888888888888888888888888888888888888888888888888",
       );
       const stat = await Deno.stat(blobPath);
       assertEquals(stat.isFile, true);
@@ -684,4 +684,137 @@ Deno.test("FilesystemStorage - configurable storage path", async (t) => {
       await cleanupTestDir(testDir);
     }
   });
+});
+
+Deno.test("FilesystemStorage - security validations", async (t) => {
+  const testDir = await createTestDir();
+  const storage = new FilesystemStorage(testDir);
+
+  try {
+    await t.step("rejects path traversal in digest", async () => {
+      const data = new TextEncoder().encode("test");
+      const stream = createStream(data);
+
+      await assertRejects(
+        async () => await storage.putBlob("sha256:../../etc/passwd", stream),
+        Error,
+        "Invalid digest hash",
+      );
+    });
+
+    await t.step("rejects path traversal in repository", async () => {
+      await assertRejects(
+        async () =>
+          await storage.linkBlob(
+            "../../../etc/passwd",
+            "sha256:aaaa00000000000000000000000000000000000000000000000000000000000a",
+          ),
+        Error,
+        "Invalid repository",
+      );
+
+      await assertRejects(
+        async () =>
+          await storage.listTags("repo/../../../etc/passwd"),
+        Error,
+        "Invalid repository",
+      );
+    });
+
+    await t.step("rejects path traversal in tag", async () => {
+      const content = new TextEncoder().encode("test");
+      const digest = "sha256:aaaa00000000000000000000000000000000000000000000000000000000000a";
+
+      await assertRejects(
+        async () =>
+          await storage.putManifest(
+            "myrepo",
+            "../../../etc/passwd",
+            content,
+            digest,
+          ),
+        Error,
+        "Invalid tag name",
+      );
+    });
+
+    await t.step("rejects invalid repository names", async () => {
+      await assertRejects(
+        async () =>
+          await storage.linkBlob(
+            "UPPERCASE",
+            "sha256:aaaa00000000000000000000000000000000000000000000000000000000000a",
+          ),
+        Error,
+        "Invalid repository component",
+      );
+
+      await assertRejects(
+        async () =>
+          await storage.linkBlob(
+            "has spaces",
+            "sha256:aaaa00000000000000000000000000000000000000000000000000000000000a",
+          ),
+        Error,
+        "Invalid repository component",
+      );
+    });
+
+    await t.step("rejects invalid tag names", async () => {
+      const content = new TextEncoder().encode("test");
+      const digest = "sha256:aaaa00000000000000000000000000000000000000000000000000000000000a";
+
+      await assertRejects(
+        async () =>
+          await storage.putManifest("myrepo", "tag:with:colon", content, digest),
+        Error,
+        "Invalid tag name",
+      );
+
+      await assertRejects(
+        async () =>
+          await storage.putManifest("myrepo", "tag/with/slash", content, digest),
+        Error,
+        "Invalid tag name",
+      );
+    });
+
+    await t.step("accepts valid OCI names", async () => {
+      // Valid repository names
+      await storage.linkBlob(
+        "lowercase",
+        "sha256:aaaa00000000000000000000000000000000000000000000000000000000000a",
+      );
+      await storage.linkBlob(
+        "with-dash",
+        "sha256:bbbb00000000000000000000000000000000000000000000000000000000000b",
+      );
+      await storage.linkBlob(
+        "with.dot",
+        "sha256:cccc00000000000000000000000000000000000000000000000000000000000c",
+      );
+      await storage.linkBlob(
+        "with_underscore",
+        "sha256:dddd0000000000000000000000000000000000000000000000000000000000dd",
+      );
+      await storage.linkBlob(
+        "nested/repo/name",
+        "sha256:eeee0000000000000000000000000000000000000000000000000000000000ee",
+      );
+
+      // Valid tag names
+      const content = new TextEncoder().encode("test");
+      const digest = "sha256:ffff0000000000000000000000000000000000000000000000000000000000ff";
+      await storage.putManifest("myrepo", "v1.0.0", content, digest);
+      await storage.putManifest("myrepo", "latest", content, digest);
+      await storage.putManifest("myrepo", "tag_with_underscore", content, digest);
+      await storage.putManifest("myrepo", "tag-with-dash", content, digest);
+      await storage.putManifest("myrepo", "tag.with.dot", content, digest);
+
+      // All should succeed without error
+      assertEquals(true, true);
+    });
+  } finally {
+    await cleanupTestDir(testDir);
+  }
 });

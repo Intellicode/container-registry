@@ -16,7 +16,7 @@ export interface StorageDriver {
    * @param digest - The digest of the blob
    * @returns ReadableStream of blob content, or null if not found
    */
-  getBlob(digest: string): Promise<ReadableStream | null>;
+  getBlob(digest: string): Promise<ReadableStream<Uint8Array> | null>;
 
   /**
    * Get the size of a blob in bytes
@@ -30,7 +30,7 @@ export interface StorageDriver {
    * @param digest - The digest of the blob
    * @param stream - ReadableStream containing the blob data
    */
-  putBlob(digest: string, stream: ReadableStream): Promise<void>;
+  putBlob(digest: string, stream: ReadableStream<Uint8Array>): Promise<void>;
 
   /**
    * Delete a blob from storage

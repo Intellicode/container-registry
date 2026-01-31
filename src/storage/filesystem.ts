@@ -1,5 +1,5 @@
 import { ensureDir } from "@std/fs";
-import { join } from "@std/path";
+import { join, resolve } from "@std/path";
 import type { StorageDriver } from "./interface.ts";
 
 /**
@@ -10,7 +10,118 @@ export class FilesystemStorage implements StorageDriver {
   private rootPath: string;
 
   constructor(rootPath: string) {
-    this.rootPath = rootPath;
+    this.rootPath = resolve(rootPath);
+  }
+
+  /**
+   * Validate and parse a digest according to OCI spec
+   * Format: algorithm:encoded
+   * algorithm: [a-z0-9]+([+._-][a-z0-9]+)*
+   * encoded: [a-zA-Z0-9=_-]+
+   */
+  private parseDigest(digest: string): { algorithm: string; hash: string } {
+    // OCI digest format: algorithm:encoded
+    // Split on first colon only
+    const colonIndex = digest.indexOf(":");
+    if (colonIndex === -1) {
+      throw new Error(`Invalid digest format: ${digest}`);
+    }
+
+    const algorithm = digest.substring(0, colonIndex);
+    const hash = digest.substring(colonIndex + 1);
+
+    // Validate algorithm: [a-z0-9]+([+._-][a-z0-9]+)*
+    if (!/^[a-z0-9]+([+._-][a-z0-9]+)*$/i.test(algorithm)) {
+      throw new Error(`Invalid digest algorithm: ${algorithm}`);
+    }
+
+    // Validate hash: must be hex for common algorithms (sha256, sha512)
+    // For now, enforce lowercase hex to match OCI spec
+    if (!hash || !/^[a-f0-9]+$/i.test(hash)) {
+      throw new Error(`Invalid digest hash: ${hash}`);
+    }
+
+    // Reject path traversal attempts
+    if (algorithm.includes("..") || algorithm.includes("/") || algorithm.includes("\\")) {
+      throw new Error(`Invalid digest algorithm contains path separators: ${algorithm}`);
+    }
+
+    if (hash.includes("..") || hash.includes("/") || hash.includes("\\")) {
+      throw new Error(`Invalid digest hash contains path separators: ${hash}`);
+    }
+
+    return { algorithm, hash };
+  }
+
+  /**
+   * Validate repository name according to OCI distribution spec
+   * Format: [a-z0-9]+([._-][a-z0-9]+)*(\/[a-z0-9]+([._-][a-z0-9]+)*)*
+   */
+  private validateRepository(repository: string): void {
+    if (!repository) {
+      throw new Error("Repository name cannot be empty");
+    }
+
+    // OCI distribution spec: repository name components separated by /
+    // Each component: lowercase alphanumeric, dots, dashes, underscores
+    // Must start with alphanumeric
+    const components = repository.split("/");
+
+    for (const component of components) {
+      if (!component) {
+        throw new Error(`Invalid repository name: empty component in ${repository}`);
+      }
+
+      // Each component must match [a-z0-9]+([._-][a-z0-9]+)*
+      if (!/^[a-z0-9]+([._-][a-z0-9]+)*$/.test(component)) {
+        throw new Error(`Invalid repository component: ${component}`);
+      }
+
+      // Reject path traversal
+      if (component === "." || component === "..") {
+        throw new Error(`Invalid repository name contains path traversal: ${repository}`);
+      }
+    }
+
+    // Additional safety: ensure no backslashes or other path separators
+    if (repository.includes("\\") || repository.includes("\0")) {
+      throw new Error(`Invalid repository name contains illegal characters: ${repository}`);
+    }
+  }
+
+  /**
+   * Validate tag name according to OCI distribution spec
+   * Format: [a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}
+   */
+  private validateTag(tag: string): void {
+    if (!tag) {
+      throw new Error("Tag name cannot be empty");
+    }
+
+    // OCI spec: tag must be valid ASCII, max 128 chars
+    // Must match [a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}
+    if (tag.length > 128) {
+      throw new Error(`Tag name too long: ${tag.length} > 128`);
+    }
+
+    if (!/^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$/.test(tag)) {
+      throw new Error(`Invalid tag name: ${tag}`);
+    }
+
+    // Reject path traversal
+    if (tag.includes("..") || tag.includes("/") || tag.includes("\\") || tag.includes("\0")) {
+      throw new Error(`Invalid tag name contains path separators: ${tag}`);
+    }
+  }
+
+  /**
+   * Ensure a path is within the root directory (prevent path traversal)
+   */
+  private validatePath(path: string): void {
+    const resolved = resolve(path);
+    if (!resolved.startsWith(this.rootPath + "/") && resolved !== this.rootPath) {
+      throw new Error(`Path traversal detected: ${path}`);
+    }
   }
 
   /**
@@ -18,25 +129,23 @@ export class FilesystemStorage implements StorageDriver {
    * Uses two-level directory structure: sha256/ab/abcdef1234...
    */
   private getBlobPath(digest: string): string {
-    const [algorithm, hash] = digest.split(":");
-    if (!algorithm || !hash) {
-      throw new Error(`Invalid digest format: ${digest}`);
-    }
+    const { algorithm, hash } = this.parseDigest(digest);
+
     // Two-level directory structure to avoid inode limits
-    // For hashes shorter than 2 chars, use the full hash as prefix
     const prefix = hash.length >= 2 ? hash.substring(0, 2) : hash;
-    return join(this.rootPath, "blobs", algorithm, prefix, hash);
+    const path = join(this.rootPath, "blobs", algorithm, prefix, hash);
+    this.validatePath(path);
+    return path;
   }
 
   /**
    * Get the path for a repository's layer link
    */
   private getLayerLinkPath(repository: string, digest: string): string {
-    const [algorithm, hash] = digest.split(":");
-    if (!algorithm || !hash) {
-      throw new Error(`Invalid digest format: ${digest}`);
-    }
-    return join(
+    this.validateRepository(repository);
+    const { algorithm, hash } = this.parseDigest(digest);
+
+    const path = join(
       this.rootPath,
       "repositories",
       repository,
@@ -45,17 +154,18 @@ export class FilesystemStorage implements StorageDriver {
       hash,
       "link",
     );
+    this.validatePath(path);
+    return path;
   }
 
   /**
    * Get the path for a manifest revision link
    */
   private getManifestRevisionPath(repository: string, digest: string): string {
-    const [algorithm, hash] = digest.split(":");
-    if (!algorithm || !hash) {
-      throw new Error(`Invalid digest format: ${digest}`);
-    }
-    return join(
+    this.validateRepository(repository);
+    const { algorithm, hash } = this.parseDigest(digest);
+
+    const path = join(
       this.rootPath,
       "repositories",
       repository,
@@ -65,13 +175,18 @@ export class FilesystemStorage implements StorageDriver {
       hash,
       "link",
     );
+    this.validatePath(path);
+    return path;
   }
 
   /**
    * Get the path for a manifest tag link
    */
   private getManifestTagPath(repository: string, tag: string): string {
-    return join(
+    this.validateRepository(repository);
+    this.validateTag(tag);
+
+    const path = join(
       this.rootPath,
       "repositories",
       repository,
@@ -81,20 +196,31 @@ export class FilesystemStorage implements StorageDriver {
       "current",
       "link",
     );
+    this.validatePath(path);
+    return path;
   }
 
   /**
    * Get the tags directory for a repository
    */
   private getTagsPath(repository: string): string {
-    return join(this.rootPath, "repositories", repository, "_manifests", "tags");
+    this.validateRepository(repository);
+
+    const path = join(this.rootPath, "repositories", repository, "_manifests", "tags");
+    this.validatePath(path);
+    return path;
   }
 
   /**
    * Check if a reference is a digest (starts with algorithm:)
    */
   private isDigest(reference: string): boolean {
-    return /^[a-z0-9]+:[a-f0-9]+$/i.test(reference);
+    try {
+      this.parseDigest(reference);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // Blob operations
@@ -112,7 +238,7 @@ export class FilesystemStorage implements StorageDriver {
     }
   }
 
-  async getBlob(digest: string): Promise<ReadableStream | null> {
+  async getBlob(digest: string): Promise<ReadableStream<Uint8Array> | null> {
     try {
       const path = this.getBlobPath(digest);
       const file = await Deno.open(path, { read: true });
@@ -138,7 +264,7 @@ export class FilesystemStorage implements StorageDriver {
     }
   }
 
-  async putBlob(digest: string, stream: ReadableStream): Promise<void> {
+  async putBlob(digest: string, stream: ReadableStream<Uint8Array>): Promise<void> {
     const path = this.getBlobPath(digest);
     const dir = join(path, "..");
     await ensureDir(dir);
