@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** to enable HTTPS with custom certificates  
+**As a** registry operator\
+**I want** to enable HTTPS with custom certificates\
 **So that** all communication is encrypted and secure for production use
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Add TLS support to the registry server for secure HTTPS connections. Support custom certificates and automatic HTTPS-only enforcement.
+Add TLS support to the registry server for secure HTTPS connections. Support
+custom certificates and automatic HTTPS-only enforcement.
 
 ## Acceptance Criteria
 
@@ -35,7 +36,8 @@ Add TLS support to the registry server for secure HTTPS connections. Support cus
 - Use Deno's built-in TLS support via `Deno.listenTls()`
 - Validate certificate/key pair on startup
 - Consider Let's Encrypt integration (future enhancement)
-- Docker requires HTTPS for non-localhost registries (or explicit insecure config)
+- Docker requires HTTPS for non-localhost registries (or explicit insecure
+  config)
 
 ## Configuration
 
@@ -55,6 +57,7 @@ server: {
 ## Usage Examples
 
 **Start with TLS:**
+
 ```bash
 REGISTRY_TLS_CERT=/path/to/cert.pem \
 REGISTRY_TLS_KEY=/path/to/key.pem \
@@ -62,6 +65,7 @@ deno task start
 ```
 
 **Config File:**
+
 ```json
 {
   "server": {

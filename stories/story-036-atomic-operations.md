@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** atomic write operations  
+**As a** registry operator\
+**I want** atomic write operations\
 **So that** interrupted operations don't corrupt data
 
 ## Priority
@@ -16,7 +16,8 @@ Non-Functional (Reliability)
 
 ## Description
 
-Ensure all write operations are atomic to prevent data corruption from crashes, network failures, or interrupted requests.
+Ensure all write operations are atomic to prevent data corruption from crashes,
+network failures, or interrupted requests.
 
 ## Acceptance Criteria
 
@@ -41,7 +42,7 @@ async function atomicWriteFile(path: string, data: Uint8Array): Promise<void> {
   const tempPath = `${path}.tmp.${crypto.randomUUID()}`;
   try {
     await Deno.writeFile(tempPath, data);
-    await Deno.rename(tempPath, path);  // Atomic on POSIX
+    await Deno.rename(tempPath, path); // Atomic on POSIX
   } catch (error) {
     // Clean up temp file on failure
     try {
@@ -55,14 +56,14 @@ async function atomicWriteFile(path: string, data: Uint8Array): Promise<void> {
 async function completeUpload(uploadId: string, digest: string): Promise<void> {
   const uploadPath = `uploads/${uploadId}/data`;
   const computedDigest = await computeDigest(uploadPath);
-  
+
   if (computedDigest !== digest) {
     await cleanupUpload(uploadId);
     throw new DigestMismatchError();
   }
-  
+
   const blobPath = getBlobPath(digest);
-  await Deno.rename(uploadPath, blobPath);  // Atomic
+  await Deno.rename(uploadPath, blobPath); // Atomic
   await cleanupUpload(uploadId);
 }
 ```
@@ -73,15 +74,15 @@ async function completeUpload(uploadId: string, digest: string): Promise<void> {
 Deno.test("atomic upload - crash simulation", async () => {
   // Start upload
   const uploadId = await initiateUpload("test/image");
-  
+
   // Write partial data
   await uploadChunk(uploadId, partialData);
-  
+
   // Simulate crash (don't call completeUpload)
-  
+
   // Verify: no blob exists, upload can be cleaned
   assertEquals(await blobExists(expectedDigest), false);
-  
+
   // Cleanup should succeed
   await cleanupExpiredUploads();
   assertEquals(await uploadExists(uploadId), false);

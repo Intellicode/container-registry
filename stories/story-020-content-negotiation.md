@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** Docker/OCI client  
-**I want** the registry to respect Accept headers  
+**As a** Docker/OCI client\
+**I want** the registry to respect Accept headers\
 **So that** I can request manifests in my preferred format
 
 ## Priority
@@ -12,7 +12,9 @@
 
 ## Description
 
-Implement proper content-type negotiation for manifest endpoints. Clients indicate preferred manifest formats via Accept header, and the registry should return the best match.
+Implement proper content-type negotiation for manifest endpoints. Clients
+indicate preferred manifest formats via Accept header, and the registry should
+return the best match.
 
 ## Acceptance Criteria
 
@@ -40,6 +42,7 @@ Implement proper content-type negotiation for manifest endpoints. Clients indica
 ## API Specification
 
 **Request Specific Type:**
+
 ```http
 GET /v2/myimage/manifests/latest HTTP/1.1
 Accept: application/vnd.oci.image.manifest.v1+json
@@ -49,6 +52,7 @@ Content-Type: application/vnd.oci.image.manifest.v1+json
 ```
 
 **Multiple Accepted Types:**
+
 ```http
 GET /v2/myimage/manifests/latest HTTP/1.1
 Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json; q=0.9
@@ -58,6 +62,7 @@ Content-Type: application/vnd.oci.image.manifest.v1+json
 ```
 
 **Type Not Available:**
+
 ```http
 GET /v2/myimage/manifests/latest HTTP/1.1
 Accept: application/vnd.oci.image.manifest.v1+json

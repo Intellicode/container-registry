@@ -42,8 +42,13 @@ export class FilesystemStorage implements StorageDriver {
     }
 
     // Reject path traversal attempts
-    if (algorithm.includes("..") || algorithm.includes("/") || algorithm.includes("\\")) {
-      throw new Error(`Invalid digest algorithm contains path separators: ${algorithm}`);
+    if (
+      algorithm.includes("..") || algorithm.includes("/") ||
+      algorithm.includes("\\")
+    ) {
+      throw new Error(
+        `Invalid digest algorithm contains path separators: ${algorithm}`,
+      );
     }
 
     if (hash.includes("..") || hash.includes("/") || hash.includes("\\")) {
@@ -69,7 +74,9 @@ export class FilesystemStorage implements StorageDriver {
 
     for (const component of components) {
       if (!component) {
-        throw new Error(`Invalid repository name: empty component in ${repository}`);
+        throw new Error(
+          `Invalid repository name: empty component in ${repository}`,
+        );
       }
 
       // Each component must match [a-z0-9]+([._-][a-z0-9]+)*
@@ -79,13 +86,17 @@ export class FilesystemStorage implements StorageDriver {
 
       // Reject path traversal
       if (component === "." || component === "..") {
-        throw new Error(`Invalid repository name contains path traversal: ${repository}`);
+        throw new Error(
+          `Invalid repository name contains path traversal: ${repository}`,
+        );
       }
     }
 
     // Additional safety: ensure no backslashes or other path separators
     if (repository.includes("\\") || repository.includes("\0")) {
-      throw new Error(`Invalid repository name contains illegal characters: ${repository}`);
+      throw new Error(
+        `Invalid repository name contains illegal characters: ${repository}`,
+      );
     }
   }
 
@@ -109,7 +120,10 @@ export class FilesystemStorage implements StorageDriver {
     }
 
     // Reject path traversal
-    if (tag.includes("..") || tag.includes("/") || tag.includes("\\") || tag.includes("\0")) {
+    if (
+      tag.includes("..") || tag.includes("/") || tag.includes("\\") ||
+      tag.includes("\0")
+    ) {
       throw new Error(`Invalid tag name contains path separators: ${tag}`);
     }
   }
@@ -119,7 +133,9 @@ export class FilesystemStorage implements StorageDriver {
    */
   private validatePath(path: string): void {
     const resolved = resolve(path);
-    if (!resolved.startsWith(this.rootPath + "/") && resolved !== this.rootPath) {
+    if (
+      !resolved.startsWith(this.rootPath + "/") && resolved !== this.rootPath
+    ) {
       throw new Error(`Path traversal detected: ${path}`);
     }
   }
@@ -206,7 +222,13 @@ export class FilesystemStorage implements StorageDriver {
   private getTagsPath(repository: string): string {
     this.validateRepository(repository);
 
-    const path = join(this.rootPath, "repositories", repository, "_manifests", "tags");
+    const path = join(
+      this.rootPath,
+      "repositories",
+      repository,
+      "_manifests",
+      "tags",
+    );
     this.validatePath(path);
     return path;
   }
@@ -264,13 +286,18 @@ export class FilesystemStorage implements StorageDriver {
     }
   }
 
-  async putBlob(digest: string, stream: ReadableStream<Uint8Array>): Promise<void> {
+  async putBlob(
+    digest: string,
+    stream: ReadableStream<Uint8Array>,
+  ): Promise<void> {
     const path = this.getBlobPath(digest);
     const dir = join(path, "..");
     await ensureDir(dir);
 
     // Write to temporary file first for atomic operation
-    const tempPath = `${path}.tmp.${Date.now()}.${Math.random().toString(36).substring(2, 15)}`;
+    const tempPath = `${path}.tmp.${Date.now()}.${
+      Math.random().toString(36).substring(2, 15)
+    }`;
 
     try {
       const file = await Deno.open(tempPath, {
@@ -426,11 +453,17 @@ export class FilesystemStorage implements StorageDriver {
     }
   }
 
-  async deleteManifest(repository: string, reference: string): Promise<boolean> {
+  async deleteManifest(
+    repository: string,
+    reference: string,
+  ): Promise<boolean> {
     try {
       if (this.isDigest(reference)) {
         // Delete revision link
-        const revisionPath = this.getManifestRevisionPath(repository, reference);
+        const revisionPath = this.getManifestRevisionPath(
+          repository,
+          reference,
+        );
         await Deno.remove(revisionPath);
       } else {
         // Delete tag link
@@ -511,7 +544,9 @@ export class FilesystemStorage implements StorageDriver {
         }
 
         // Recursively scan subdirectories
-        const newPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
+        const newPath = currentPath
+          ? `${currentPath}/${entry.name}`
+          : entry.name;
         await this.scanRepositories(basePath, newPath, results);
       }
     } catch (error) {

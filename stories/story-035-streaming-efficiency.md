@@ -2,9 +2,10 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** efficient memory usage for large blobs  
-**So that** the registry can handle multi-gigabyte images without running out of memory
+**As a** registry operator\
+**I want** efficient memory usage for large blobs\
+**So that** the registry can handle multi-gigabyte images without running out of
+memory
 
 ## Priority
 
@@ -16,7 +17,8 @@ Non-Functional (Performance)
 
 ## Description
 
-Ensure all blob operations use streaming to prevent memory exhaustion when handling large container images.
+Ensure all blob operations use streaming to prevent memory exhaustion when
+handling large container images.
 
 ## Acceptance Criteria
 
@@ -37,24 +39,24 @@ Ensure all blob operations use streaming to prevent memory exhaustion when handl
 
 ## Performance Targets
 
-| Metric | Target |
-|--------|--------|
-| Memory (idle) | < 50MB |
+| Metric                              | Target  |
+| ----------------------------------- | ------- |
+| Memory (idle)                       | < 50MB  |
 | Memory (100 concurrent 1GB uploads) | < 500MB |
-| Memory (single 10GB blob) | < 100MB |
+| Memory (single 10GB blob)           | < 100MB |
 
 ## Verification Tests
 
 ```typescript
 Deno.test("memory efficiency - large blob upload", async () => {
   const initialMemory = Deno.memoryUsage().heapUsed;
-  
+
   // Upload 1GB blob
   await uploadBlob(createLargeStream(1024 * 1024 * 1024));
-  
+
   const finalMemory = Deno.memoryUsage().heapUsed;
   const memoryIncrease = finalMemory - initialMemory;
-  
+
   // Should not increase by more than 50MB
   assert(memoryIncrease < 50 * 1024 * 1024);
 });

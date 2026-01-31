@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** to rate limit API requests  
+**As a** registry operator\
+**I want** to rate limit API requests\
 **So that** the registry is protected from abuse and resource exhaustion
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement rate limiting middleware to protect the registry from excessive requests. Support different limits for different operation types.
+Implement rate limiting middleware to protect the registry from excessive
+requests. Support different limits for different operation types.
 
 ## Acceptance Criteria
 
@@ -70,6 +71,7 @@ rateLimit: {
 ## API Specification
 
 **Rate Limited Response:**
+
 ```http
 GET /v2/myimage/manifests/latest HTTP/1.1
 Host: registry.example.com
@@ -90,6 +92,7 @@ X-RateLimit-Reset: 1705312200
 ```
 
 **Normal Response with Headers:**
+
 ```http
 HTTP/1.1 200 OK
 X-RateLimit-Limit: 100

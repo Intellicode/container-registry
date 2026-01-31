@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** Docker/OCI client  
-**I want** to download image manifests and check if they exist  
+**As a** Docker/OCI client\
+**I want** to download image manifests and check if they exist\
 **So that** I can pull container images and verify tags
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement manifest retrieval by tag name or digest. Clients use this to get the image structure before downloading layers.
+Implement manifest retrieval by tag name or digest. Clients use this to get the
+image structure before downloading layers.
 
 ## Acceptance Criteria
 
@@ -45,6 +46,7 @@ Implement manifest retrieval by tag name or digest. Clients use this to get the 
 ## API Specification
 
 **Download by Tag:**
+
 ```http
 GET /v2/myimage/manifests/latest HTTP/1.1
 Host: registry.example.com
@@ -63,6 +65,7 @@ Content-Length: 1234
 ```
 
 **Download by Digest:**
+
 ```http
 GET /v2/myimage/manifests/sha256:abc123... HTTP/1.1
 Host: registry.example.com
@@ -75,6 +78,7 @@ Docker-Content-Digest: sha256:abc123...
 ```
 
 **Check Existence:**
+
 ```http
 HEAD /v2/myimage/manifests/latest HTTP/1.1
 Host: registry.example.com

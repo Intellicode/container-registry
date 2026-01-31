@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** to delete image manifests  
+**As a** registry operator\
+**I want** to delete image manifests\
 **So that** I can remove old or unwanted images from the registry
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement manifest deletion by digest. Tags can be removed by deleting the manifest they reference. This is necessary for image lifecycle management.
+Implement manifest deletion by digest. Tags can be removed by deleting the
+manifest they reference. This is necessary for image lifecycle management.
 
 ## Acceptance Criteria
 
@@ -38,6 +39,7 @@ Implement manifest deletion by digest. Tags can be removed by deleting the manif
 ## API Specification
 
 **Delete Manifest:**
+
 ```http
 DELETE /v2/myimage/manifests/sha256:abc123... HTTP/1.1
 Host: registry.example.com
@@ -46,6 +48,7 @@ HTTP/1.1 202 Accepted
 ```
 
 **Manifest Not Found:**
+
 ```http
 DELETE /v2/myimage/manifests/sha256:notfound... HTTP/1.1
 Host: registry.example.com
@@ -62,6 +65,7 @@ Content-Type: application/json
 ```
 
 **Invalid Reference (Tag):**
+
 ```http
 DELETE /v2/myimage/manifests/latest HTTP/1.1
 Host: registry.example.com

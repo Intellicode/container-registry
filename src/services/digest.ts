@@ -1,6 +1,6 @@
 /**
  * Content Digest Service
- * 
+ *
  * Implements OCI-compliant content digest calculation and verification
  * using SHA-256 (default) and SHA-512 algorithms for content-addressable storage.
  */
@@ -20,7 +20,7 @@ const SUPPORTED_ALGORITHMS = ["sha256", "sha512"] as const;
 
 /**
  * Calculate digest from various input types
- * 
+ *
  * @param content - Content to hash (ReadableStream, Uint8Array, or string)
  * @param algorithm - Hash algorithm to use (defaults to "sha256")
  * @returns OCI-formatted digest string (e.g., "sha256:abc123...")
@@ -45,7 +45,10 @@ export async function calculateDigest(
 
   // Use Web Crypto API for hashing
   const cryptoAlgorithm = algorithm === "sha256" ? "SHA-256" : "SHA-512";
-  const hashBuffer = await crypto.subtle.digest(cryptoAlgorithm, data as BufferSource);
+  const hashBuffer = await crypto.subtle.digest(
+    cryptoAlgorithm,
+    data as BufferSource,
+  );
   const hashArray = new Uint8Array(hashBuffer);
   const hashHex = Array.from(hashArray)
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -56,7 +59,7 @@ export async function calculateDigest(
 
 /**
  * Convert ReadableStream to Uint8Array efficiently
- * 
+ *
  * @param stream - Input stream
  * @returns Complete content as Uint8Array
  */
@@ -93,7 +96,7 @@ async function streamToUint8Array(
 
 /**
  * Parse and validate a digest string
- * 
+ *
  * @param digest - Digest string to parse (e.g., "sha256:abc123...")
  * @returns Parsed digest object or null if invalid
  */
@@ -110,7 +113,11 @@ export function parseDigest(digest: string): ParsedDigest | null {
   const [algorithm, hash] = parts;
 
   // Validate algorithm
-  if (!SUPPORTED_ALGORITHMS.includes(algorithm as typeof SUPPORTED_ALGORITHMS[number])) {
+  if (
+    !SUPPORTED_ALGORITHMS.includes(
+      algorithm as typeof SUPPORTED_ALGORITHMS[number],
+    )
+  ) {
     return null;
   }
 
@@ -128,7 +135,7 @@ export function parseDigest(digest: string): ParsedDigest | null {
 
 /**
  * Validate if a digest string is well-formed
- * 
+ *
  * @param digest - Digest string to validate
  * @returns true if valid, false otherwise
  */
@@ -139,7 +146,7 @@ export function isValidDigest(digest: string): boolean {
 /**
  * Verify that content matches expected digest
  * Uses constant-time comparison to prevent timing attacks
- * 
+ *
  * @param content - Content to verify
  * @param expectedDigest - Expected digest string
  * @returns true if content matches digest, false otherwise
@@ -163,7 +170,7 @@ export async function verifyDigest(
 
 /**
  * Constant-time string comparison to prevent timing attacks
- * 
+ *
  * @param a - First string
  * @param b - Second string
  * @returns true if strings are equal, false otherwise
@@ -186,7 +193,7 @@ function constantTimeEqual(a: string, b: string): boolean {
  * Create a TransformStream that calculates digest while passing through data
  * Note: Buffers all chunks in memory before calculating digest in flush().
  * Memory usage is proportional to total content size.
- * 
+ *
  * @param algorithm - Hash algorithm to use (defaults to "sha256")
  * @returns Object containing the transform stream and a promise for the digest
  */

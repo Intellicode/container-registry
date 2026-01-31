@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** DevOps engineer  
-**I want** Prometheus-compatible metrics  
+**As a** DevOps engineer\
+**I want** Prometheus-compatible metrics\
 **So that** I can monitor registry performance and set up alerts
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement a Prometheus-compatible metrics endpoint that exposes registry performance and operational metrics.
+Implement a Prometheus-compatible metrics endpoint that exposes registry
+performance and operational metrics.
 
 ## Acceptance Criteria
 
@@ -67,9 +68,9 @@ registry_active_uploads 5
 
 ```typescript
 metrics: {
-  enabled: boolean;        // Default: false
-  path: string;            // Default: "/metrics"
-  requireAuth: boolean;    // Default: false
+  enabled: boolean; // Default: false
+  path: string; // Default: "/metrics"
+  requireAuth: boolean; // Default: false
 }
 ```
 

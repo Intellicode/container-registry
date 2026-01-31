@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** upload sessions to be cancellable and auto-expire  
+**As a** registry operator\
+**I want** upload sessions to be cancellable and auto-expire\
 **So that** abandoned uploads don't consume disk space indefinitely
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement upload cancellation endpoint and automatic cleanup of expired upload sessions.
+Implement upload cancellation endpoint and automatic cleanup of expired upload
+sessions.
 
 ## Acceptance Criteria
 
@@ -43,6 +44,7 @@ Implement upload cancellation endpoint and automatic cleanup of expired upload s
 ## API Specification
 
 **Cancel Upload:**
+
 ```http
 DELETE /v2/myimage/blobs/uploads/uuid HTTP/1.1
 Host: registry.example.com
@@ -51,6 +53,7 @@ HTTP/1.1 204 No Content
 ```
 
 **Upload Not Found:**
+
 ```http
 DELETE /v2/myimage/blobs/uploads/unknown-uuid HTTP/1.1
 Host: registry.example.com

@@ -2,9 +2,10 @@
 
 ## User Story
 
-**As a** CI/CD system  
-**I want** to authenticate using JWT tokens  
-**So that** I can integrate with existing identity providers and automate image operations
+**As a** CI/CD system\
+**I want** to authenticate using JWT tokens\
+**So that** I can integrate with existing identity providers and automate image
+operations
 
 ## Priority
 
@@ -12,7 +13,9 @@
 
 ## Description
 
-Implement Bearer token authentication using JWT for integration with external token services and Docker credential helpers. This enables enterprise SSO and automated workflows.
+Implement Bearer token authentication using JWT for integration with external
+token services and Docker credential helpers. This enables enterprise SSO and
+automated workflows.
 
 ## Acceptance Criteria
 
@@ -66,6 +69,7 @@ Implement Bearer token authentication using JWT for integration with external to
 ## API Specification
 
 **Unauthenticated Request:**
+
 ```http
 GET /v2/myimage/manifests/latest HTTP/1.1
 Host: registry.example.com
@@ -75,6 +79,7 @@ WWW-Authenticate: Bearer realm="https://auth.example.com/token",service="registr
 ```
 
 **Authenticated Request:**
+
 ```http
 GET /v2/myimage/manifests/latest HTTP/1.1
 Host: registry.example.com
@@ -92,8 +97,8 @@ auth: {
     realm: "https://auth.example.com/token";
     service: "registry.example.com";
     issuer: "auth.example.com";
-    publicKey: "/etc/registry/token.pub";  // or JWKS URL
-  };
+    publicKey: "/etc/registry/token.pub"; // or JWKS URL
+  }
 }
 ```
 

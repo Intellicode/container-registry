@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** DevOps engineer  
-**I want** health check endpoints  
+**As a** DevOps engineer\
+**I want** health check endpoints\
 **So that** I can monitor registry health and integrate with orchestrators
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement health check endpoints for liveness and readiness probes. These are essential for Kubernetes deployments and load balancer health checks.
+Implement health check endpoints for liveness and readiness probes. These are
+essential for Kubernetes deployments and load balancer health checks.
 
 ## Acceptance Criteria
 
@@ -48,6 +49,7 @@ Implement health check endpoints for liveness and readiness probes. These are es
 ## API Specification
 
 **Liveness (Healthy):**
+
 ```http
 GET /health HTTP/1.1
 Host: registry.example.com
@@ -61,6 +63,7 @@ Content-Type: application/json
 ```
 
 **Readiness (Ready):**
+
 ```http
 GET /health/ready HTTP/1.1
 Host: registry.example.com
@@ -77,6 +80,7 @@ Content-Type: application/json
 ```
 
 **Readiness (Not Ready):**
+
 ```http
 GET /health/ready HTTP/1.1
 Host: registry.example.com

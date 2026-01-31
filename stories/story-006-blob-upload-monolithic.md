@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** Docker/OCI client  
-**I want** to upload blobs to the registry in a single request  
+**As a** Docker/OCI client\
+**I want** to upload blobs to the registry in a single request\
 **So that** I can push container image layers efficiently
 
 ## Priority
@@ -12,7 +12,9 @@
 
 ## Description
 
-Implement the blob upload flow for monolithic (single-request) uploads. This is the simplest upload method and sufficient for most use cases. The flow consists of: initiate upload -> complete upload with content.
+Implement the blob upload flow for monolithic (single-request) uploads. This is
+the simplest upload method and sufficient for most use cases. The flow consists
+of: initiate upload -> complete upload with content.
 
 ## Acceptance Criteria
 
@@ -41,11 +43,13 @@ Implement the blob upload flow for monolithic (single-request) uploads. This is 
 - UUID generation: use `crypto.randomUUID()`
 - Stream blob directly to temp file, compute digest while streaming
 - Only move to final location after digest verification
-- Repository name validation regex: `[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*`
+- Repository name validation regex:
+  `[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*`
 
 ## API Specification
 
 **Initiate Upload:**
+
 ```http
 POST /v2/myimage/blobs/uploads/ HTTP/1.1
 Host: registry.example.com
@@ -57,6 +61,7 @@ Range: 0-0
 ```
 
 **Complete Upload:**
+
 ```http
 PUT /v2/myimage/blobs/uploads/uuid-here?digest=sha256:abc123... HTTP/1.1
 Host: registry.example.com

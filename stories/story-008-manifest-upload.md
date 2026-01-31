@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** Docker/OCI client  
-**I want** to upload image manifests  
+**As a** Docker/OCI client\
+**I want** to upload image manifests\
 **So that** I can complete the image push and make it available for pulling
 
 ## Priority
@@ -12,7 +12,9 @@
 
 ## Description
 
-Implement manifest upload functionality. Manifests describe the image structure including config and layer references. The registry must validate manifests and verify all referenced blobs exist.
+Implement manifest upload functionality. Manifests describe the image structure
+including config and layer references. The registry must validate manifests and
+verify all referenced blobs exist.
 
 ## Acceptance Criteria
 
@@ -49,6 +51,7 @@ Implement manifest upload functionality. Manifests describe the image structure 
 ## API Specification
 
 **Upload Manifest by Tag:**
+
 ```http
 PUT /v2/myimage/manifests/v1.0 HTTP/1.1
 Host: registry.example.com
@@ -77,6 +80,7 @@ Docker-Content-Digest: sha256:manifest...
 ```
 
 **Error - Missing Blob:**
+
 ```http
 HTTP/1.1 404 Not Found
 Content-Type: application/json

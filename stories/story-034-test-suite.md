@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** developer  
-**I want** a comprehensive test suite  
+**As a** developer\
+**I want** a comprehensive test suite\
 **So that** I can confidently make changes without breaking functionality
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement unit tests, integration tests, and conformance tests to ensure registry quality and OCI compliance.
+Implement unit tests, integration tests, and conformance tests to ensure
+registry quality and OCI compliance.
 
 ## Acceptance Criteria
 
@@ -85,16 +86,19 @@ tests/
 Deno.test("push and pull image workflow", async () => {
   // Start test registry
   const registry = await startTestRegistry();
-  
+
   try {
     // Push image using Docker CLI
     await exec("docker", ["push", "localhost:15000/test:latest"]);
-    
+
     // Pull image
     await exec("docker", ["pull", "localhost:15000/test:latest"]);
-    
+
     // Verify image exists
-    const result = await exec("docker", ["images", "localhost:15000/test:latest"]);
+    const result = await exec("docker", [
+      "images",
+      "localhost:15000/test:latest",
+    ]);
     assertStringContains(result, "latest");
   } finally {
     await registry.stop();

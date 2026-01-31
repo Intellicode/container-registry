@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry administrator  
-**I want** to validate my configuration file  
+**As a** registry administrator\
+**I want** to validate my configuration file\
 **So that** I can catch errors before starting the registry
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Create a CLI tool to validate registry configuration files and report any errors or warnings.
+Create a CLI tool to validate registry configuration files and report any errors
+or warnings.
 
 ## Acceptance Criteria
 
@@ -68,7 +69,7 @@ interface ValidationResult {
 }
 
 interface ValidationError {
-  path: string;      // e.g., "server.port"
+  path: string; // e.g., "server.port"
   message: string;
   value?: unknown;
 }

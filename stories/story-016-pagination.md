@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** Docker/OCI client  
-**I want** paginated results for tag and catalog listings  
+**As a** Docker/OCI client\
+**I want** paginated results for tag and catalog listings\
 **So that** I can handle repositories with many tags without overwhelming memory
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Add pagination support to tag listing and catalog endpoints using the `n` (limit) and `last` (cursor) query parameters as defined in the OCI spec.
+Add pagination support to tag listing and catalog endpoints using the `n`
+(limit) and `last` (cursor) query parameters as defined in the OCI spec.
 
 ## Acceptance Criteria
 
@@ -39,6 +40,7 @@ Add pagination support to tag listing and catalog endpoints using the `n` (limit
 ## API Specification
 
 **First Page:**
+
 ```http
 GET /v2/myimage/tags/list?n=10 HTTP/1.1
 Host: registry.example.com
@@ -54,6 +56,7 @@ Link: </v2/myimage/tags/list?n=10&last=v1.9>; rel="next"
 ```
 
 **Next Page:**
+
 ```http
 GET /v2/myimage/tags/list?n=10&last=v1.9 HTTP/1.1
 Host: registry.example.com
@@ -68,6 +71,7 @@ Content-Type: application/json
 ```
 
 **Catalog Pagination:**
+
 ```http
 GET /v2/_catalog?n=5 HTTP/1.1
 Host: registry.example.com

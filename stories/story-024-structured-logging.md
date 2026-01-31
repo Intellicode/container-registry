@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** structured JSON logs with request tracing  
+**As a** registry operator\
+**I want** structured JSON logs with request tracing\
 **So that** I can monitor the registry and troubleshoot issues
 
 ## Priority
@@ -12,7 +12,9 @@
 
 ## Description
 
-Implement structured logging middleware that outputs JSON-formatted logs suitable for log aggregation systems. Include request/response details and timing information.
+Implement structured logging middleware that outputs JSON-formatted logs
+suitable for log aggregation systems. Include request/response details and
+timing information.
 
 ## Acceptance Criteria
 
@@ -56,6 +58,7 @@ Implement structured logging middleware that outputs JSON-formatted logs suitabl
 ## Log Examples
 
 **Request Completed:**
+
 ```json
 {
   "timestamp": "2024-01-15T10:30:00.000Z",
@@ -72,6 +75,7 @@ Implement structured logging middleware that outputs JSON-formatted logs suitabl
 ```
 
 **Authentication Failure:**
+
 ```json
 {
   "timestamp": "2024-01-15T10:30:05.000Z",
@@ -86,6 +90,7 @@ Implement structured logging middleware that outputs JSON-formatted logs suitabl
 ```
 
 **Pretty Format (Development):**
+
 ```
 2024-01-15T10:30:00.000Z INFO  [req-123] GET /v2/myimage/manifests/latest 200 45ms
 ```

@@ -2,9 +2,10 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** blobs and metadata stored on the local filesystem  
-**So that** I can run a simple, self-contained registry without external dependencies
+**As a** registry operator\
+**I want** blobs and metadata stored on the local filesystem\
+**So that** I can run a simple, self-contained registry without external
+dependencies
 
 ## Priority
 
@@ -12,7 +13,9 @@
 
 ## Description
 
-Implement the filesystem-based storage layer that provides content-addressable blob storage and repository metadata management. This is the foundation for all blob and manifest operations.
+Implement the filesystem-based storage layer that provides content-addressable
+blob storage and repository metadata management. This is the foundation for all
+blob and manifest operations.
 
 ## Acceptance Criteria
 
@@ -25,19 +28,27 @@ Implement the filesystem-based storage layer that provides content-addressable b
     getBlobSize(digest: string): Promise<number | null>;
     putBlob(digest: string, stream: ReadableStream): Promise<void>;
     deleteBlob(digest: string): Promise<boolean>;
-    
+
     // Repository layer links
     linkBlob(repository: string, digest: string): Promise<void>;
     unlinkBlob(repository: string, digest: string): Promise<void>;
-    
+
     // Manifest operations
-    getManifest(repository: string, reference: string): Promise<{content: Uint8Array, digest: string} | null>;
-    putManifest(repository: string, reference: string, content: Uint8Array, digest: string): Promise<void>;
+    getManifest(
+      repository: string,
+      reference: string,
+    ): Promise<{ content: Uint8Array; digest: string } | null>;
+    putManifest(
+      repository: string,
+      reference: string,
+      content: Uint8Array,
+      digest: string,
+    ): Promise<void>;
     deleteManifest(repository: string, reference: string): Promise<boolean>;
-    
+
     // Tag operations
     listTags(repository: string): Promise<string[]>;
-    
+
     // Repository operations
     listRepositories(): Promise<string[]>;
   }

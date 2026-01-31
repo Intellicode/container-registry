@@ -66,34 +66,34 @@ Deno.test("config: port validation", () => {
   Deno.env.set("REGISTRY_PORT", "70000");
   config = loadConfig();
   assertEquals(config.server.port, 15000);
-  
+
   Deno.env.delete("REGISTRY_PORT");
 });
 
 Deno.test("config: log level parsing", () => {
   resetConfig();
-  
+
   // Test valid levels
   Deno.env.set("REGISTRY_LOG_LEVEL", "debug");
   assertEquals(loadConfig().log.level, "debug");
-  
+
   Deno.env.set("REGISTRY_LOG_LEVEL", "info");
   assertEquals(loadConfig().log.level, "info");
-  
+
   Deno.env.set("REGISTRY_LOG_LEVEL", "warn");
   assertEquals(loadConfig().log.level, "warn");
-  
+
   Deno.env.set("REGISTRY_LOG_LEVEL", "error");
   assertEquals(loadConfig().log.level, "error");
-  
+
   // Test case insensitivity
   Deno.env.set("REGISTRY_LOG_LEVEL", "DEBUG");
   assertEquals(loadConfig().log.level, "debug");
-  
+
   // Test invalid level (defaults to info)
   Deno.env.set("REGISTRY_LOG_LEVEL", "invalid");
   assertEquals(loadConfig().log.level, "info");
-  
+
   Deno.env.delete("REGISTRY_LOG_LEVEL");
 });
 
@@ -101,9 +101,9 @@ Deno.test("config: singleton pattern", () => {
   resetConfig();
   const config1 = getConfig();
   const config2 = getConfig();
-  
+
   assertEquals(config1, config2);
-  
+
   resetConfig();
   const config3 = getConfig();
   // Objects are strictly different references, even if content is identical

@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** to delete blobs  
+**As a** registry operator\
+**I want** to delete blobs\
 **So that** I can free up storage space from orphaned or unwanted content
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement blob deletion endpoint. While typically blobs are cleaned up by garbage collection, the API should support explicit deletion.
+Implement blob deletion endpoint. While typically blobs are cleaned up by
+garbage collection, the API should support explicit deletion.
 
 ## Acceptance Criteria
 
@@ -37,6 +38,7 @@ Implement blob deletion endpoint. While typically blobs are cleaned up by garbag
 ## API Specification
 
 **Delete Blob:**
+
 ```http
 DELETE /v2/myimage/blobs/sha256:abc123... HTTP/1.1
 Host: registry.example.com
@@ -45,6 +47,7 @@ HTTP/1.1 202 Accepted
 ```
 
 **Blob Not Found:**
+
 ```http
 DELETE /v2/myimage/blobs/sha256:notfound... HTTP/1.1
 Host: registry.example.com
@@ -62,7 +65,8 @@ Content-Type: application/json
 
 ## Implementation Options
 
-1. **Safe (Recommended)**: Only remove repository link, let GC clean orphaned blobs
+1. **Safe (Recommended)**: Only remove repository link, let GC clean orphaned
+   blobs
 2. **Immediate**: Check all repos for references before deleting actual blob
 
 ## Dependencies

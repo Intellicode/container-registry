@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** DevOps engineer  
-**I want** an official Docker image for the registry  
+**As a** DevOps engineer\
+**I want** an official Docker image for the registry\
 **So that** I can easily deploy it in containerized environments
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Create a Dockerfile and build process to produce an optimized container image for the registry.
+Create a Dockerfile and build process to produce an optimized container image
+for the registry.
 
 ## Acceptance Criteria
 

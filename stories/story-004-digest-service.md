@@ -2,9 +2,10 @@
 
 ## User Story
 
-**As a** registry  
-**I want** to calculate and verify content digests  
-**So that** I can ensure blob integrity and implement content-addressable storage
+**As a** registry\
+**I want** to calculate and verify content digests\
+**So that** I can ensure blob integrity and implement content-addressable
+storage
 
 ## Priority
 
@@ -12,7 +13,9 @@
 
 ## Description
 
-Implement a digest calculation service that computes SHA-256 hashes for content verification. This service is used during blob uploads to verify content integrity and generate content-addressable storage keys.
+Implement a digest calculation service that computes SHA-256 hashes for content
+verification. This service is used during blob uploads to verify content
+integrity and generate content-addressable storage keys.
 
 ## Acceptance Criteria
 
@@ -29,14 +32,17 @@ Implement a digest calculation service that computes SHA-256 hashes for content 
     algorithm: "sha256" | "sha512";
     hash: string;
   }
-  
+
   function parseDigest(digest: string): ParsedDigest | null;
   function isValidDigest(digest: string): boolean;
   ```
 - [ ] Streaming digest computation (doesn't buffer entire content)
 - [ ] Digest verification function:
   ```typescript
-  function verifyDigest(content: ReadableStream, expectedDigest: string): Promise<boolean>;
+  function verifyDigest(
+    content: ReadableStream,
+    expectedDigest: string,
+  ): Promise<boolean>;
   ```
 
 ## Technical Notes
@@ -49,7 +55,7 @@ Implement a digest calculation service that computes SHA-256 hashes for content 
 
 ```typescript
 // Calculate digest from stream
-const digest = await calculateDigest(stream); 
+const digest = await calculateDigest(stream);
 // Returns: "sha256:abc123..."
 
 // Parse and validate digest string

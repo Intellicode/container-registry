@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** to require username/password authentication  
+**As a** registry operator\
+**I want** to require username/password authentication\
 **So that** I can control access to my private registry
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement HTTP Basic Authentication for the registry. Credentials are validated against an htpasswd-style file with bcrypt-hashed passwords.
+Implement HTTP Basic Authentication for the registry. Credentials are validated
+against an htpasswd-style file with bcrypt-hashed passwords.
 
 ## Acceptance Criteria
 
@@ -57,6 +58,7 @@ REGISTRY_AUTH_HTPASSWD=/etc/registry/htpasswd
 ## API Specification
 
 **Unauthenticated Request:**
+
 ```http
 GET /v2/ HTTP/1.1
 Host: registry.example.com
@@ -74,6 +76,7 @@ Content-Type: application/json
 ```
 
 **Authenticated Request:**
+
 ```http
 GET /v2/ HTTP/1.1
 Host: registry.example.com

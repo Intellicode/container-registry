@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** to configure fine-grained access permissions  
+**As a** registry operator\
+**I want** to configure fine-grained access permissions\
 **So that** I can control who can read, write, or delete specific repositories
 
 ## Priority
@@ -12,15 +12,16 @@
 
 ## Description
 
-Implement an access control system that allows defining permissions at the repository level. Support wildcards for managing groups of repositories.
+Implement an access control system that allows defining permissions at the
+repository level. Support wildcards for managing groups of repositories.
 
 ## Acceptance Criteria
 
 - [ ] Access control rules defined in configuration:
   ```typescript
   interface AccessRule {
-    repository: string;    // Pattern with wildcards: "myorg/*", "*"
-    users: string[];       // Usernames or groups
+    repository: string; // Pattern with wildcards: "myorg/*", "*"
+    users: string[]; // Usernames or groups
     permissions: ("pull" | "push" | "delete")[];
   }
   ```
@@ -74,6 +75,7 @@ Implement an access control system that allows defining permissions at the repos
 ## API Specification
 
 **Access Denied:**
+
 ```http
 PUT /v2/restricted/image/manifests/latest HTTP/1.1
 Host: registry.example.com

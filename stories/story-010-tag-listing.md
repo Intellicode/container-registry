@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** Docker/OCI client  
-**I want** to list all tags for a repository  
+**As a** Docker/OCI client\
+**I want** to list all tags for a repository\
 **So that** I can see what image versions are available
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement the tag listing endpoint that returns all tags for a given repository. This is used by clients to discover available image versions.
+Implement the tag listing endpoint that returns all tags for a given repository.
+This is used by clients to discover available image versions.
 
 ## Acceptance Criteria
 
@@ -40,6 +41,7 @@ Implement the tag listing endpoint that returns all tags for a given repository.
 ## API Specification
 
 **List Tags:**
+
 ```http
 GET /v2/myimage/tags/list HTTP/1.1
 Host: registry.example.com
@@ -54,6 +56,7 @@ Content-Type: application/json
 ```
 
 **Empty Repository:**
+
 ```http
 GET /v2/myimage/tags/list HTTP/1.1
 Host: registry.example.com
@@ -68,6 +71,7 @@ Content-Type: application/json
 ```
 
 **Unknown Repository:**
+
 ```http
 GET /v2/unknown/tags/list HTTP/1.1
 Host: registry.example.com

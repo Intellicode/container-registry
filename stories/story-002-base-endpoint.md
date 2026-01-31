@@ -2,9 +2,10 @@
 
 ## User Story
 
-**As a** Docker/OCI client  
-**I want** to check the API version at `/v2/`  
-**So that** I can verify the registry supports the OCI Distribution Specification v2
+**As a** Docker/OCI client\
+**I want** to check the API version at `/v2/`\
+**So that** I can verify the registry supports the OCI Distribution
+Specification v2
 
 ## Priority
 
@@ -12,17 +13,22 @@
 
 ## Description
 
-Implement the OCI Distribution Specification base endpoint that clients use to verify API compatibility and authentication status. This is the first endpoint hit by `docker login` and all registry operations.
+Implement the OCI Distribution Specification base endpoint that clients use to
+verify API compatibility and authentication status. This is the first endpoint
+hit by `docker login` and all registry operations.
 
 ## Acceptance Criteria
 
-- [ ] `GET /v2/` returns `200 OK` for authenticated/anonymous requests (based on config)
+- [ ] `GET /v2/` returns `200 OK` for authenticated/anonymous requests (based on
+      config)
 - [ ] Response includes header: `Docker-Distribution-API-Version: registry/2.0`
 - [ ] Response body is empty or `{}`
-- [ ] Returns `401 Unauthorized` when authentication is required but not provided
+- [ ] Returns `401 Unauthorized` when authentication is required but not
+      provided
 - [ ] `401` response includes `WWW-Authenticate` header with realm information
 - [ ] Route is defined in `src/routes/v2.ts`
-- [ ] Endpoint handles both trailing slash and non-trailing slash (`/v2` and `/v2/`)
+- [ ] Endpoint handles both trailing slash and non-trailing slash (`/v2` and
+      `/v2/`)
 
 ## Technical Notes
 
@@ -39,6 +45,7 @@ Implement the OCI Distribution Specification base endpoint that clients use to v
 ## API Specification
 
 **Request:**
+
 ```http
 GET /v2/ HTTP/1.1
 Host: registry.example.com
@@ -46,6 +53,7 @@ Authorization: Basic <credentials>  # if auth enabled
 ```
 
 **Response (Success):**
+
 ```http
 HTTP/1.1 200 OK
 Docker-Distribution-API-Version: registry/2.0
@@ -53,6 +61,7 @@ Content-Length: 0
 ```
 
 **Response (Unauthorized):**
+
 ```http
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: Basic realm="Registry"

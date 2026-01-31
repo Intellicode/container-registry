@@ -2,7 +2,9 @@
 
 ## Overview
 
-A lightweight, self-hosted Docker container registry implementing the OCI Distribution Specification. Built with Deno and Hono for minimal dependencies, high performance, and modern TypeScript development experience.
+A lightweight, self-hosted Docker container registry implementing the OCI
+Distribution Specification. Built with Deno and Hono for minimal dependencies,
+high performance, and modern TypeScript development experience.
 
 ---
 
@@ -10,7 +12,9 @@ A lightweight, self-hosted Docker container registry implementing the OCI Distri
 
 ### 1.1 Product Vision
 
-A minimal, production-ready container registry that allows developers and organizations to privately host and distribute Docker/OCI container images without relying on external services.
+A minimal, production-ready container registry that allows developers and
+organizations to privately host and distribute Docker/OCI container images
+without relying on external services.
 
 ### 1.2 Goals
 
@@ -18,7 +22,8 @@ A minimal, production-ready container registry that allows developers and organi
 - **Standards Compliance**: Full OCI Distribution Specification v2 support
 - **Performance**: Efficient blob storage and transfer with streaming support
 - **Security**: Authentication, authorization, and content verification
-- **Minimal Dependencies**: Leverage Deno's built-in capabilities, Hono for routing
+- **Minimal Dependencies**: Leverage Deno's built-in capabilities, Hono for
+  routing
 
 ### 1.3 Non-Goals
 
@@ -33,12 +38,12 @@ A minimal, production-ready container registry that allows developers and organi
 
 ### 2.1 Technology Stack
 
-| Component | Technology | Rationale |
-|-----------|------------|-----------|
-| Runtime | Deno 2.x | Built-in TypeScript, secure by default, no node_modules |
-| Web Framework | Hono | Lightweight, fast, middleware support, Web Standards API |
-| Storage | File System | Simple, no external dependencies |
-| Authentication | Built-in | Basic Auth, Bearer Token (JWT) |
+| Component      | Technology  | Rationale                                                |
+| -------------- | ----------- | -------------------------------------------------------- |
+| Runtime        | Deno 2.x    | Built-in TypeScript, secure by default, no node_modules  |
+| Web Framework  | Hono        | Lightweight, fast, middleware support, Web Standards API |
+| Storage        | File System | Simple, no external dependencies                         |
+| Authentication | Built-in    | Basic Auth, Bearer Token (JWT)                           |
 
 ### 2.2 System Architecture
 
@@ -117,46 +122,50 @@ The registry MUST implement the OCI Distribution Specification v2 endpoints:
 
 #### 3.1.1 Base Endpoint
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/v2/` | API version check, returns `200 OK` if authenticated |
+| Method | Endpoint | Description                                          |
+| ------ | -------- | ---------------------------------------------------- |
+| GET    | `/v2/`   | API version check, returns `200 OK` if authenticated |
 
 **Response Headers:**
+
 - `Docker-Distribution-API-Version: registry/2.0`
 
 #### 3.1.2 Blob Operations
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| HEAD | `/v2/<name>/blobs/<digest>` | Check blob existence |
-| GET | `/v2/<name>/blobs/<digest>` | Retrieve blob content |
-| DELETE | `/v2/<name>/blobs/<digest>` | Delete blob |
-| POST | `/v2/<name>/blobs/uploads/` | Initiate blob upload |
-| GET | `/v2/<name>/blobs/uploads/<uuid>` | Get upload status |
-| PATCH | `/v2/<name>/blobs/uploads/<uuid>` | Upload blob chunk |
-| PUT | `/v2/<name>/blobs/uploads/<uuid>?digest=<digest>` | Complete blob upload |
-| DELETE | `/v2/<name>/blobs/uploads/<uuid>` | Cancel upload |
-| POST | `/v2/<name>/blobs/uploads/?mount=<digest>&from=<repo>` | Cross-repo blob mount |
+| Method | Endpoint                                               | Description           |
+| ------ | ------------------------------------------------------ | --------------------- |
+| HEAD   | `/v2/<name>/blobs/<digest>`                            | Check blob existence  |
+| GET    | `/v2/<name>/blobs/<digest>`                            | Retrieve blob content |
+| DELETE | `/v2/<name>/blobs/<digest>`                            | Delete blob           |
+| POST   | `/v2/<name>/blobs/uploads/`                            | Initiate blob upload  |
+| GET    | `/v2/<name>/blobs/uploads/<uuid>`                      | Get upload status     |
+| PATCH  | `/v2/<name>/blobs/uploads/<uuid>`                      | Upload blob chunk     |
+| PUT    | `/v2/<name>/blobs/uploads/<uuid>?digest=<digest>`      | Complete blob upload  |
+| DELETE | `/v2/<name>/blobs/uploads/<uuid>`                      | Cancel upload         |
+| POST   | `/v2/<name>/blobs/uploads/?mount=<digest>&from=<repo>` | Cross-repo blob mount |
 
 **Blob Upload Methods:**
+
 1. **Monolithic Upload**: Single PUT with entire blob
 2. **Chunked Upload**: Multiple PATCH requests followed by PUT
 3. **Cross-Repository Mount**: Reference existing blob from another repository
 
 #### 3.1.3 Manifest Operations
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| HEAD | `/v2/<name>/manifests/<reference>` | Check manifest existence |
-| GET | `/v2/<name>/manifests/<reference>` | Retrieve manifest |
-| PUT | `/v2/<name>/manifests/<reference>` | Upload manifest |
-| DELETE | `/v2/<name>/manifests/<reference>` | Delete manifest |
+| Method | Endpoint                           | Description              |
+| ------ | ---------------------------------- | ------------------------ |
+| HEAD   | `/v2/<name>/manifests/<reference>` | Check manifest existence |
+| GET    | `/v2/<name>/manifests/<reference>` | Retrieve manifest        |
+| PUT    | `/v2/<name>/manifests/<reference>` | Upload manifest          |
+| DELETE | `/v2/<name>/manifests/<reference>` | Delete manifest          |
 
 **Reference Types:**
+
 - Tag name (e.g., `latest`, `v1.0.0`)
 - Digest (e.g., `sha256:abc123...`)
 
 **Supported Manifest Types:**
+
 - `application/vnd.oci.image.manifest.v1+json`
 - `application/vnd.oci.image.index.v1+json`
 - `application/vnd.docker.distribution.manifest.v2+json`
@@ -164,21 +173,23 @@ The registry MUST implement the OCI Distribution Specification v2 endpoints:
 
 #### 3.1.4 Tag Operations
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/v2/<name>/tags/list` | List repository tags |
+| Method | Endpoint               | Description          |
+| ------ | ---------------------- | -------------------- |
+| GET    | `/v2/<name>/tags/list` | List repository tags |
 
 **Query Parameters:**
+
 - `n`: Maximum number of results
 - `last`: Last tag from previous page (pagination)
 
 #### 3.1.5 Catalog Operations
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/v2/_catalog` | List all repositories |
+| Method | Endpoint       | Description           |
+| ------ | -------------- | --------------------- |
+| GET    | `/v2/_catalog` | List all repositories |
 
 **Query Parameters:**
+
 - `n`: Maximum number of results
 - `last`: Last repository from previous page (pagination)
 
@@ -188,7 +199,8 @@ The registry MUST implement the OCI Distribution Specification v2 endpoints:
 
 - All blobs MUST be stored by their content digest
 - Supported digest algorithms: `sha256` (required), `sha512` (optional)
-- On upload completion, the server MUST verify the provided digest matches computed digest
+- On upload completion, the server MUST verify the provided digest matches
+  computed digest
 - Digest format: `<algorithm>:<hex-encoded-hash>`
 
 #### 3.2.2 Manifest Verification
@@ -253,12 +265,12 @@ data/uploads/
 
 ### 4.1 Performance
 
-| Metric | Target |
-|--------|--------|
-| Concurrent uploads | 100+ simultaneous |
-| Blob download throughput | Limited by disk/network I/O |
-| Manifest operations | < 50ms latency (99th percentile) |
-| Startup time | < 2 seconds |
+| Metric                   | Target                           |
+| ------------------------ | -------------------------------- |
+| Concurrent uploads       | 100+ simultaneous                |
+| Blob download throughput | Limited by disk/network I/O      |
+| Manifest operations      | < 50ms latency (99th percentile) |
+| Startup time             | < 2 seconds                      |
 
 ### 4.2 Scalability
 
@@ -348,34 +360,34 @@ interface AccessControl {
 interface RegistryConfig {
   // Server settings
   server: {
-    host: string;           // Default: "0.0.0.0"
-    port: number;           // Default: 15000
+    host: string; // Default: "0.0.0.0"
+    port: number; // Default: 15000
     tls?: {
-      cert: string;         // Path to TLS certificate
-      key: string;          // Path to TLS private key
+      cert: string; // Path to TLS certificate
+      key: string; // Path to TLS private key
     };
   };
 
   // Storage settings
   storage: {
-    rootDirectory: string;  // Default: "./data"
-    maxUploadSize: number;  // Default: 0 (unlimited)
-    uploadTimeout: number;  // Default: 3600 (seconds)
+    rootDirectory: string; // Default: "./data"
+    maxUploadSize: number; // Default: 0 (unlimited)
+    uploadTimeout: number; // Default: 3600 (seconds)
   };
 
   // Authentication settings
   auth: {
     type: "none" | "basic" | "token";
-    
+
     // For basic auth
-    htpasswd?: string;      // Path to htpasswd file
-    
+    htpasswd?: string; // Path to htpasswd file
+
     // For token auth
     token?: {
-      realm: string;        // Token service URL
-      service: string;      // Service name
-      issuer: string;       // Token issuer
-      publicKey: string;    // Path to public key for verification
+      realm: string; // Token service URL
+      service: string; // Service name
+      issuer: string; // Token issuer
+      publicKey: string; // Path to public key for verification
     };
   };
 
@@ -394,7 +406,7 @@ interface RegistryConfig {
   // Garbage collection
   gc?: {
     enabled: boolean;
-    schedule: string;       // Cron expression
+    schedule: string; // Cron expression
     dryRun: boolean;
   };
 }
@@ -402,15 +414,15 @@ interface RegistryConfig {
 
 ### 5.3 Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `REGISTRY_HOST` | Listen host | `0.0.0.0` |
-| `REGISTRY_PORT` | Listen port | `15000` |
-| `REGISTRY_STORAGE_PATH` | Storage directory | `./data` |
-| `REGISTRY_LOG_LEVEL` | Log level | `info` |
-| `REGISTRY_AUTH_TYPE` | Auth type | `none` |
-| `REGISTRY_TLS_CERT` | TLS cert path | - |
-| `REGISTRY_TLS_KEY` | TLS key path | - |
+| Variable                | Description       | Default   |
+| ----------------------- | ----------------- | --------- |
+| `REGISTRY_HOST`         | Listen host       | `0.0.0.0` |
+| `REGISTRY_PORT`         | Listen port       | `15000`   |
+| `REGISTRY_STORAGE_PATH` | Storage directory | `./data`  |
+| `REGISTRY_LOG_LEVEL`    | Log level         | `info`    |
+| `REGISTRY_AUTH_TYPE`    | Auth type         | `none`    |
+| `REGISTRY_TLS_CERT`     | TLS cert path     | -         |
+| `REGISTRY_TLS_KEY`      | TLS key path      | -         |
 
 ---
 
@@ -421,31 +433,31 @@ All errors follow the OCI Distribution Specification error format:
 ```typescript
 interface ErrorResponse {
   errors: Array<{
-    code: string;       // Machine-readable error code
-    message: string;    // Human-readable message
-    detail?: unknown;   // Additional context
+    code: string; // Machine-readable error code
+    message: string; // Human-readable message
+    detail?: unknown; // Additional context
   }>;
 }
 ```
 
 ### 6.1 Error Codes
 
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| `BLOB_UNKNOWN` | 404 | Blob does not exist |
-| `BLOB_UPLOAD_INVALID` | 400 | Blob upload invalid |
-| `BLOB_UPLOAD_UNKNOWN` | 404 | Upload session not found |
-| `DIGEST_INVALID` | 400 | Provided digest invalid |
-| `MANIFEST_BLOB_UNKNOWN` | 404 | Manifest references unknown blob |
-| `MANIFEST_INVALID` | 400 | Manifest invalid |
-| `MANIFEST_UNKNOWN` | 404 | Manifest not found |
-| `NAME_INVALID` | 400 | Invalid repository name |
-| `NAME_UNKNOWN` | 404 | Repository not found |
-| `SIZE_INVALID` | 400 | Content length mismatch |
-| `UNAUTHORIZED` | 401 | Authentication required |
-| `DENIED` | 403 | Access denied |
-| `UNSUPPORTED` | 415 | Unsupported operation |
-| `TOOMANYREQUESTS` | 429 | Rate limit exceeded |
+| Code                    | HTTP Status | Description                      |
+| ----------------------- | ----------- | -------------------------------- |
+| `BLOB_UNKNOWN`          | 404         | Blob does not exist              |
+| `BLOB_UPLOAD_INVALID`   | 400         | Blob upload invalid              |
+| `BLOB_UPLOAD_UNKNOWN`   | 404         | Upload session not found         |
+| `DIGEST_INVALID`        | 400         | Provided digest invalid          |
+| `MANIFEST_BLOB_UNKNOWN` | 404         | Manifest references unknown blob |
+| `MANIFEST_INVALID`      | 400         | Manifest invalid                 |
+| `MANIFEST_UNKNOWN`      | 404         | Manifest not found               |
+| `NAME_INVALID`          | 400         | Invalid repository name          |
+| `NAME_UNKNOWN`          | 404         | Repository not found             |
+| `SIZE_INVALID`          | 400         | Content length mismatch          |
+| `UNAUTHORIZED`          | 401         | Authentication required          |
+| `DENIED`                | 403         | Access denied                    |
+| `UNSUPPORTED`           | 415         | Unsupported operation            |
+| `TOOMANYREQUESTS`       | 429         | Rate limit exceeded              |
 
 ---
 
@@ -633,14 +645,14 @@ WantedBy=multi-user.target
 
 ## 11. Success Metrics
 
-| Metric | Target |
-|--------|--------|
-| OCI Conformance | 100% pass |
+| Metric                   | Target                 |
+| ------------------------ | ---------------------- |
+| OCI Conformance          | 100% pass              |
 | Docker CLI compatibility | Full push/pull support |
-| Unit test coverage | > 80% |
-| Memory usage (idle) | < 50MB |
-| Cold start time | < 2s |
-| P99 manifest latency | < 100ms |
+| Unit test coverage       | > 80%                  |
+| Memory usage (idle)      | < 50MB                 |
+| Cold start time          | < 2s                   |
+| P99 manifest latency     | < 100ms                |
 
 ---
 
@@ -716,19 +728,19 @@ Client                                    Registry
 
 ### B.1 Manifest Media Types
 
-| Type | Media Type |
-|------|------------|
-| OCI Image Manifest | `application/vnd.oci.image.manifest.v1+json` |
-| OCI Image Index | `application/vnd.oci.image.index.v1+json` |
-| Docker Manifest V2 | `application/vnd.docker.distribution.manifest.v2+json` |
+| Type                 | Media Type                                                  |
+| -------------------- | ----------------------------------------------------------- |
+| OCI Image Manifest   | `application/vnd.oci.image.manifest.v1+json`                |
+| OCI Image Index      | `application/vnd.oci.image.index.v1+json`                   |
+| Docker Manifest V2   | `application/vnd.docker.distribution.manifest.v2+json`      |
 | Docker Manifest List | `application/vnd.docker.distribution.manifest.list.v2+json` |
 
 ### B.2 Blob Media Types
 
-| Type | Media Type |
-|------|------------|
-| OCI Layer (gzip) | `application/vnd.oci.image.layer.v1.tar+gzip` |
-| OCI Layer (zstd) | `application/vnd.oci.image.layer.v1.tar+zstd` |
-| OCI Config | `application/vnd.oci.image.config.v1+json` |
-| Docker Layer | `application/vnd.docker.image.rootfs.diff.tar.gzip` |
-| Docker Config | `application/vnd.docker.container.image.v1+json` |
+| Type             | Media Type                                          |
+| ---------------- | --------------------------------------------------- |
+| OCI Layer (gzip) | `application/vnd.oci.image.layer.v1.tar+gzip`       |
+| OCI Layer (zstd) | `application/vnd.oci.image.layer.v1.tar+zstd`       |
+| OCI Config       | `application/vnd.oci.image.config.v1+json`          |
+| Docker Layer     | `application/vnd.docker.image.rootfs.diff.tar.gzip` |
+| Docker Config    | `application/vnd.docker.container.image.v1+json`    |

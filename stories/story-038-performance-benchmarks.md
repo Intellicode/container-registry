@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** the registry to meet specific performance targets  
+**As a** registry operator\
+**I want** the registry to meet specific performance targets\
 **So that** it can handle production workloads efficiently
 
 ## Priority
@@ -16,18 +16,19 @@ Non-Functional (Performance)
 
 ## Description
 
-Implement benchmarks to verify the registry meets the performance targets defined in the PRD.
+Implement benchmarks to verify the registry meets the performance targets
+defined in the PRD.
 
 ## Performance Targets (from PRD)
 
-| Metric | Target |
-|--------|--------|
-| Concurrent uploads | 100+ simultaneous |
-| Blob download throughput | Limited by disk/network I/O |
-| Manifest operations | < 50ms latency (99th percentile) |
-| Startup time | < 2 seconds |
-| Memory (idle) | < 50MB |
-| P99 manifest latency | < 100ms |
+| Metric                   | Target                           |
+| ------------------------ | -------------------------------- |
+| Concurrent uploads       | 100+ simultaneous                |
+| Blob download throughput | Limited by disk/network I/O      |
+| Manifest operations      | < 50ms latency (99th percentile) |
+| Startup time             | < 2 seconds                      |
+| Memory (idle)            | < 50MB                           |
+| P99 manifest latency     | < 100ms                          |
 
 ## Acceptance Criteria
 
@@ -62,8 +63,9 @@ Deno.bench("manifest GET latency", async () => {
 
 // benchmarks/concurrent-uploads.ts
 Deno.bench("100 concurrent uploads", async () => {
-  const uploads = Array.from({ length: 100 }, (_, i) => 
-    uploadBlob(`test/image-${i}`, generate1MBBlob())
+  const uploads = Array.from(
+    { length: 100 },
+    (_, i) => uploadBlob(`test/image-${i}`, generate1MBBlob()),
   );
   await Promise.all(uploads);
 });
@@ -85,6 +87,7 @@ Deno.bench("100 concurrent uploads", async () => {
 ## Reporting
 
 Generate benchmark reports with:
+
 - Median, P95, P99 latencies
 - Throughput (requests/second, MB/second)
 - Memory usage over time

@@ -17,15 +17,18 @@ import {
 const TEST_VECTORS = [
   {
     input: "",
-    digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    digest:
+      "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   },
   {
     input: "hello world",
-    digest: "sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+    digest:
+      "sha256:b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
   },
   {
     input: "The quick brown fox jumps over the lazy dog",
-    digest: "sha256:d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
+    digest:
+      "sha256:d7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592",
   },
 ];
 
@@ -43,13 +46,13 @@ Deno.test("calculateDigest - computes correct SHA-256 from string", async () => 
 Deno.test("calculateDigest - supports SHA-512 algorithm", async () => {
   const input = "hello world";
   const result = await calculateDigest(input, "sha512");
-  
+
   // Verify it's a valid SHA-512 digest (128 hex chars)
   assertEquals(result.startsWith("sha512:"), true);
   const hash = result.split(":")[1];
   assertEquals(hash.length, 128);
   assertEquals(/^[a-f0-9]{128}$/.test(hash), true);
-  
+
   // Verify known SHA-512 hash for "hello world"
   assertEquals(
     result,
@@ -132,8 +135,7 @@ Deno.test("parseDigest - parses valid SHA-256 digest", () => {
 });
 
 Deno.test("parseDigest - parses valid SHA-512 digest", () => {
-  const digest =
-    "sha512:abc123def456" + "0".repeat(116); // 128 hex chars total
+  const digest = "sha512:abc123def456" + "0".repeat(116); // 128 hex chars total
   const parsed = parseDigest(digest);
 
   assertExists(parsed);

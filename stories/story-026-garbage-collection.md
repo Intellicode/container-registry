@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** to clean up orphaned blobs  
+**As a** registry operator\
+**I want** to clean up orphaned blobs\
 **So that** storage space is reclaimed after image deletions
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement garbage collection to identify and remove blobs that are no longer referenced by any manifest. This can run on-demand or on a schedule.
+Implement garbage collection to identify and remove blobs that are no longer
+referenced by any manifest. This can run on-demand or on a schedule.
 
 ## Acceptance Criteria
 
@@ -84,10 +85,10 @@ deno task gc
 
 ```typescript
 gc: {
-  enabled: boolean;      // Enable scheduled GC
-  schedule: string;      // Cron expression (e.g., "0 3 * * *")
-  dryRun: boolean;       // Default to dry-run for safety
-  minAge: number;        // Don't delete blobs newer than N seconds
+  enabled: boolean; // Enable scheduled GC
+  schedule: string; // Cron expression (e.g., "0 3 * * *")
+  dryRun: boolean; // Default to dry-run for safety
+  minAge: number; // Don't delete blobs newer than N seconds
 }
 ```
 

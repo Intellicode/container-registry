@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry operator  
-**I want** the registry to shut down gracefully  
+**As a** registry operator\
+**I want** the registry to shut down gracefully\
 **So that** in-flight requests complete and no data is corrupted
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement graceful shutdown handling that completes active requests and uploads before stopping the server.
+Implement graceful shutdown handling that completes active requests and uploads
+before stopping the server.
 
 ## Acceptance Criteria
 
@@ -48,21 +49,21 @@ let activeRequests = 0;
 Deno.addSignalListener("SIGTERM", async () => {
   console.log("Shutdown signal received");
   shuttingDown = true;
-  
+
   // Stop accepting new connections
   server.close();
-  
+
   // Wait for active requests
   const timeout = setTimeout(() => {
     console.warn("Shutdown timeout, forcing exit");
     Deno.exit(1);
   }, 30000);
-  
+
   while (activeRequests > 0) {
     console.log(`Waiting for ${activeRequests} active requests`);
     await delay(1000);
   }
-  
+
   clearTimeout(timeout);
   console.log("Shutdown complete");
   Deno.exit(0);
@@ -73,7 +74,7 @@ Deno.addSignalListener("SIGTERM", async () => {
 
 ```typescript
 server: {
-  shutdownTimeout: 30000;  // milliseconds
+  shutdownTimeout: 30000; // milliseconds
 }
 ```
 

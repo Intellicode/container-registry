@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry administrator  
-**I want** a CLI tool to manage user credentials  
+**As a** registry administrator\
+**I want** a CLI tool to manage user credentials\
 **So that** I can create and update htpasswd entries for basic authentication
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Create a CLI tool to generate bcrypt-hashed password entries compatible with the registry's basic authentication system.
+Create a CLI tool to generate bcrypt-hashed password entries compatible with the
+registry's basic authentication system.
 
 ## Acceptance Criteria
 

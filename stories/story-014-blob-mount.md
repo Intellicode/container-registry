@@ -2,9 +2,10 @@
 
 ## User Story
 
-**As a** Docker/OCI client  
-**I want** to mount an existing blob from another repository  
-**So that** I can avoid re-uploading identical layers when pushing to different repos
+**As a** Docker/OCI client\
+**I want** to mount an existing blob from another repository\
+**So that** I can avoid re-uploading identical layers when pushing to different
+repos
 
 ## Priority
 
@@ -12,11 +13,14 @@
 
 ## Description
 
-Implement blob mounting that allows clients to reference an existing blob from another repository without re-uploading the data. This is a major optimization for organizations with many similar images.
+Implement blob mounting that allows clients to reference an existing blob from
+another repository without re-uploading the data. This is a major optimization
+for organizations with many similar images.
 
 ## Acceptance Criteria
 
-- [ ] `POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository>` mounts blob:
+- [ ] `POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository>` mounts
+      blob:
   - If blob exists in source repository and user has access:
     - Returns `201 Created`
     - Returns `Location: /v2/<name>/blobs/<digest>`
@@ -34,11 +38,13 @@ Implement blob mounting that allows clients to reference an existing blob from a
 - This is purely a metadata operation - no blob data is copied
 - Creates symlink/link file in target repo's `_layers/` directory
 - The blob storage is already content-addressable and deduplicated
-- Must verify blob actually exists in source repo (not just in global blob store)
+- Must verify blob actually exists in source repo (not just in global blob
+  store)
 
 ## API Specification
 
 **Successful Mount:**
+
 ```http
 POST /v2/myorg/newimage/blobs/uploads/?mount=sha256:abc...&from=myorg/baseimage HTTP/1.1
 Host: registry.example.com
@@ -49,6 +55,7 @@ Docker-Content-Digest: sha256:abc...
 ```
 
 **Fallback to Upload (blob not found):**
+
 ```http
 POST /v2/myorg/newimage/blobs/uploads/?mount=sha256:missing...&from=myorg/baseimage HTTP/1.1
 Host: registry.example.com

@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** registry user  
-**I want** to list all repositories in the registry  
+**As a** registry user\
+**I want** to list all repositories in the registry\
 **So that** I can discover what images are available
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement the catalog endpoint that returns a list of all repositories in the registry. This enables discovery and tooling integration.
+Implement the catalog endpoint that returns a list of all repositories in the
+registry. This enables discovery and tooling integration.
 
 ## Acceptance Criteria
 
@@ -41,6 +42,7 @@ Implement the catalog endpoint that returns a list of all repositories in the re
 ## API Specification
 
 **List Repositories:**
+
 ```http
 GET /v2/_catalog HTTP/1.1
 Host: registry.example.com
@@ -59,6 +61,7 @@ Content-Type: application/json
 ```
 
 **Empty Registry:**
+
 ```http
 GET /v2/_catalog HTTP/1.1
 Host: registry.example.com

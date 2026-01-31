@@ -2,9 +2,10 @@
 
 ## User Story
 
-**As a** Docker/OCI client  
-**I want** to check upload status and resume interrupted uploads  
-**So that** I don't have to restart large uploads from scratch after network failures
+**As a** Docker/OCI client\
+**I want** to check upload status and resume interrupted uploads\
+**So that** I don't have to restart large uploads from scratch after network
+failures
 
 ## Priority
 
@@ -12,7 +13,8 @@
 
 ## Description
 
-Implement upload session status checking so clients can query how much data has been received and resume from that point.
+Implement upload session status checking so clients can query how much data has
+been received and resume from that point.
 
 ## Acceptance Criteria
 
@@ -33,13 +35,16 @@ Implement upload session status checking so clients can query how much data has 
 
 ## Technical Notes
 
-- Hash state serialization: Deno's Web Crypto doesn't support serializing hash state
-- Alternative: Store chunks separately and recompute on resume, or use a library that supports incremental hashing with state export
+- Hash state serialization: Deno's Web Crypto doesn't support serializing hash
+  state
+- Alternative: Store chunks separately and recompute on resume, or use a library
+  that supports incremental hashing with state export
 - Consider storing chunk boundaries for verification
 
 ## API Specification
 
 **Check Status:**
+
 ```http
 GET /v2/myimage/blobs/uploads/uuid HTTP/1.1
 Host: registry.example.com
@@ -51,6 +56,7 @@ Docker-Upload-UUID: uuid
 ```
 
 **Resume Upload:**
+
 ```http
 PATCH /v2/myimage/blobs/uploads/uuid HTTP/1.1
 Content-Range: 10240-20479

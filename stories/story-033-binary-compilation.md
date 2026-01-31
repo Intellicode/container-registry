@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** system administrator  
-**I want** to deploy the registry as a single binary  
+**As a** system administrator\
+**I want** to deploy the registry as a single binary\
 **So that** I can run it without Deno installed and simplify deployment
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Use Deno's compile feature to produce standalone executables for multiple platforms.
+Use Deno's compile feature to produce standalone executables for multiple
+platforms.
 
 ## Acceptance Criteria
 

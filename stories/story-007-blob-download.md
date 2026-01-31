@@ -2,8 +2,8 @@
 
 ## User Story
 
-**As a** Docker/OCI client  
-**I want** to download blobs and check if they exist  
+**As a** Docker/OCI client\
+**I want** to download blobs and check if they exist\
 **So that** I can pull container image layers and optimize uploads
 
 ## Priority
@@ -12,7 +12,8 @@
 
 ## Description
 
-Implement blob retrieval and existence checking. Clients use HEAD to check if a blob exists (to skip uploading duplicates) and GET to download blob content.
+Implement blob retrieval and existence checking. Clients use HEAD to check if a
+blob exists (to skip uploading duplicates) and GET to download blob content.
 
 ## Acceptance Criteria
 
@@ -37,13 +38,15 @@ Implement blob retrieval and existence checking. Clients use HEAD to check if a 
 ## Technical Notes
 
 - Blob lookup: check if blob exists in `data/blobs/sha256/<prefix>/<digest>`
-- Also verify repository has link to blob (or allow cross-repo access based on policy)
+- Also verify repository has link to blob (or allow cross-repo access based on
+  policy)
 - Use Deno's file streaming for efficient large blob transfer
 - For Range support, use `Deno.seek()` to start at offset
 
 ## API Specification
 
 **Check Existence:**
+
 ```http
 HEAD /v2/myimage/blobs/sha256:abc123... HTTP/1.1
 Host: registry.example.com
@@ -54,6 +57,7 @@ Docker-Content-Digest: sha256:abc123...
 ```
 
 **Download Blob:**
+
 ```http
 GET /v2/myimage/blobs/sha256:abc123... HTTP/1.1
 Host: registry.example.com
@@ -67,6 +71,7 @@ Docker-Content-Digest: sha256:abc123...
 ```
 
 **Range Request (Optional):**
+
 ```http
 GET /v2/myimage/blobs/sha256:abc123... HTTP/1.1
 Host: registry.example.com
