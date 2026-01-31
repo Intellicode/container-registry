@@ -205,7 +205,7 @@ export function createDigestStream(
   });
 
   const stream = new TransformStream({
-    transform(chunk: Uint8Array, controller) {
+    transform(chunk, controller) {
       // Store chunk for digest calculation
       chunks.push(new Uint8Array(chunk));
       totalLength += chunk.length;
