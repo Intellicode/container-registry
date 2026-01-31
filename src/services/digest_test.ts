@@ -149,8 +149,10 @@ Deno.test("parseDigest - rejects invalid format", () => {
     ":abc123",
     "sha256:invalid-hex",
     "sha256:tooshort",
-    "sha256:" + "a".repeat(63), // Too short
-    "sha256:" + "a".repeat(65), // Too long
+    "sha256:" + "a".repeat(63), // Too short for SHA-256
+    "sha256:" + "a".repeat(65), // Too long for SHA-256
+    "sha512:" + "a".repeat(127), // Too short for SHA-512
+    "sha512:" + "a".repeat(129), // Too long for SHA-512
     "md5:abc123def456", // Unsupported algorithm
     "",
     "sha256:ABCDEF" + "0".repeat(58), // Uppercase not allowed
@@ -248,6 +250,23 @@ Deno.test("verifyDigest - works with ReadableStream", async () => {
   assertEquals(result, true);
 });
 
+Deno.test("verifyDigest - works with SHA-512 digests", async () => {
+  const content = "hello world";
+  const correctSha512Digest =
+    "sha512:309ecc489c12d6eb4cc40f50c902f2b4d0ed77ee511a7c7a9bcd3ca86d4cd86f989dd35bc5ff499670da34255b45b0cfd830e81f605dcf7dc5542e93ae9cd76f";
+
+  const result = await verifyDigest(content, correctSha512Digest);
+  assertEquals(result, true);
+});
+
+Deno.test("verifyDigest - rejects incorrect SHA-512 digest", async () => {
+  const content = "hello world";
+  const incorrectSha512Digest = "sha512:" + "0".repeat(128);
+
+  const result = await verifyDigest(content, incorrectSha512Digest);
+  assertEquals(result, false);
+});
+
 Deno.test("createDigestStream - calculates digest while streaming", async () => {
   const input = "hello world";
   const expected =
@@ -315,6 +334,61 @@ Deno.test("createDigestStream - handles chunked data", async () => {
   assertEquals(chunks.length, 3);
 
   // Verify digest
+  const calculatedDigest = await digest;
+  assertEquals(calculatedDigest, expected);
+});
+
+Deno.test("createDigestStream - handles empty stream", async () => {
+  const expected =
+    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
+  const { stream: transformStream, digest } = createDigestStream();
+
+  // Create empty input stream
+  const inputStream = new ReadableStream({
+    start(controller) {
+      controller.close();
+    },
+  });
+
+  // Consume the stream
+  const outputStream = inputStream.pipeThrough(transformStream);
+  const reader = outputStream.getReader();
+
+  // Verify stream is empty
+  const { done } = await reader.read();
+  assertEquals(done, true);
+
+  // Verify digest matches empty content
+  const calculatedDigest = await digest;
+  assertEquals(calculatedDigest, expected);
+});
+
+Deno.test("createDigestStream - supports SHA-512", async () => {
+  const input = "hello world";
+  const expected =
+    "sha512:309ecc489c12d6eb4cc40f50c902f2b4d0ed77ee511a7c7a9bcd3ca86d4cd86f989dd35bc5ff499670da34255b45b0cfd830e81f605dcf7dc5542e93ae9cd76f";
+
+  const { stream: transformStream, digest } = createDigestStream("sha512");
+
+  // Create input stream
+  const inputStream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(input));
+      controller.close();
+    },
+  });
+
+  // Consume the stream
+  const outputStream = inputStream.pipeThrough(transformStream);
+  const reader = outputStream.getReader();
+
+  while (true) {
+    const { done } = await reader.read();
+    if (done) break;
+  }
+
+  // Verify SHA-512 digest
   const calculatedDigest = await digest;
   assertEquals(calculatedDigest, expected);
 });

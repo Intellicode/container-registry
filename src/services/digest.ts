@@ -187,9 +187,12 @@ function constantTimeEqual(a: string, b: string): boolean {
  * Note: Buffers all chunks in memory before calculating digest in flush().
  * Memory usage is proportional to total content size.
  * 
+ * @param algorithm - Hash algorithm to use (defaults to "sha256")
  * @returns Object containing the transform stream and a promise for the digest
  */
-export function createDigestStream(): {
+export function createDigestStream(
+  algorithm: "sha256" | "sha512" = "sha256",
+): {
   stream: TransformStream<Uint8Array, Uint8Array>;
   digest: Promise<string>;
 } {
@@ -219,14 +222,15 @@ export function createDigestStream(): {
         offset += chunk.length;
       }
 
-      // Calculate digest
-      const hashBuffer = await crypto.subtle.digest("SHA-256", combined);
+      // Calculate digest using specified algorithm
+      const cryptoAlgorithm = algorithm === "sha256" ? "SHA-256" : "SHA-512";
+      const hashBuffer = await crypto.subtle.digest(cryptoAlgorithm, combined);
       const hashArray = new Uint8Array(hashBuffer);
       const hashHex = Array.from(hashArray)
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
 
-      resolveDigest(`sha256:${hashHex}`);
+      resolveDigest(`${algorithm}:${hashHex}`);
     },
   });
 
