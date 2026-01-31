@@ -148,13 +148,14 @@ export async function verifyDigest(
   content: ReadableStream<Uint8Array> | Uint8Array | string,
   expectedDigest: string,
 ): Promise<boolean> {
-  // First validate the expected digest format
-  if (!isValidDigest(expectedDigest)) {
+  // Parse and validate the expected digest format
+  const parsed = parseDigest(expectedDigest);
+  if (!parsed) {
     return false;
   }
 
-  // Calculate actual digest
-  const actualDigest = await calculateDigest(content);
+  // Calculate actual digest using the same algorithm as the expected digest
+  const actualDigest = await calculateDigest(content, parsed.algorithm);
 
   // Constant-time comparison to prevent timing attacks
   return constantTimeEqual(actualDigest, expectedDigest);
