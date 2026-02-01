@@ -191,8 +191,9 @@ function constantTimeEqual(a: string, b: string): boolean {
 
 /**
  * Create a TransformStream that calculates digest while passing through data
- * Note: Buffers all chunks in memory before calculating digest in flush().
- * Memory usage is proportional to total content size.
+ * Buffers chunks in memory to calculate digest when stream completes.
+ * Note: Due to Web Crypto API limitations, this still requires buffering all chunks.
+ * However, when used with stream tee'ing, it avoids re-reading data from disk.
  *
  * @param algorithm - Hash algorithm to use (defaults to "sha256")
  * @returns Object containing the transform stream and a promise for the digest

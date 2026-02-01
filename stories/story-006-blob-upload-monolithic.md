@@ -31,7 +31,8 @@ of: initiate upload -> complete upload with content.
   - Returns `201 Created`
   - Returns `Location` header: `/v2/<name>/blobs/<digest>`
   - Returns `Docker-Content-Digest` header
-- [ ] Upload session stored in `data/uploads/<uuid>/`
+- [ ] Upload session tracked in `data/uploads/<uuid>/` (empty directory used as
+      presence marker; actual data staging/persistence added in Story 012)
 - [ ] Invalid digest returns `DIGEST_INVALID` error
 - [ ] Non-existent upload UUID returns `BLOB_UPLOAD_UNKNOWN` error
 - [ ] Invalid repository name returns `NAME_INVALID` error
@@ -41,10 +42,14 @@ of: initiate upload -> complete upload with content.
 ## Technical Notes
 
 - UUID generation: use `crypto.randomUUID()`
-- Stream blob directly to temp file, compute digest while streaming
-- Only move to final location after digest verification
+- Stream blob directly to final storage, compute digest while streaming
+- Only keep blob in storage after digest verification succeeds
 - Repository name validation regex:
   `[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*`
+- Upload session directory (`data/uploads/<uuid>/`) created as empty directory
+  to track active sessions; serves as presence marker for `uploadExists()` check
+- Full upload persistence (data chunks, hash state, timestamps) will be added in
+  Story 012 (Chunked Upload) when resumable uploads are implemented
 
 ## API Specification
 

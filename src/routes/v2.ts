@@ -5,6 +5,7 @@
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { createAuthMiddleware } from "../middleware/auth.ts";
+import { createBlobRoutes } from "./blobs.ts";
 import { getConfig } from "../config.ts";
 
 /**
@@ -22,6 +23,9 @@ export function createV2Routes(): Hono {
   // This endpoint is used by docker login and all registry operations
   // strict: false allows both /v2 and /v2/ to match
   v2.get("/", (c: Context) => c.json({}));
+
+  // Mount blob upload routes
+  v2.route("/", createBlobRoutes());
 
   return v2;
 }
