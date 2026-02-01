@@ -23,7 +23,7 @@ export function ociError(
       {
         code,
         message,
-        detail,
+        ...(detail !== undefined && { detail }),
       },
     ],
   };

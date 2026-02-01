@@ -4,7 +4,7 @@
 
 import { type Context, Hono, type Next } from "hono";
 import { logger } from "hono/logger";
-import { RegistryError } from "./types/errors.ts";
+import { ErrorCodes, RegistryError } from "./types/errors.ts";
 import { createV2Routes } from "./routes/v2.ts";
 import { isDevelopment } from "./middleware/errors.ts";
 
@@ -21,14 +21,20 @@ export function createApp(): Hono {
 
     // Handle known registry errors
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode as any);
+      return c.json(err.toResponse(), err.statusCode);
     }
 
-    // Handle unexpected errors - return generic 500 error
-    // Never expose stack traces or internal error details to clients
+    // Handle unexpected errors - return OCI-compliant 500 error
+    // Never expose stack traces or internal error details in production
+    const isDev = isDevelopment();
     const body = {
-      error: "internal server error",
-      detail: isDevelopment() ? String(err) : undefined,
+      errors: [
+        {
+          code: ErrorCodes.UNKNOWN,
+          message: "unknown error",
+          ...(isDev && { detail: String(err) }),
+        },
+      ],
     };
 
     return c.json(body, 500);

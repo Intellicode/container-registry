@@ -12,7 +12,7 @@ Deno.test("onError handler - catches and formats RegistryError", async () => {
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode as any);
+      return c.json(err.toResponse(), err.statusCode);
     }
     return c.json({ error: "internal server error" }, 500);
   });
@@ -49,7 +49,7 @@ Deno.test("onError handler - catches generic errors and returns 500", async () =
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode as any);
+      return c.json(err.toResponse(), err.statusCode);
     }
     return c.json({ error: "internal server error" }, 500);
   });
@@ -82,7 +82,7 @@ Deno.test("onError handler - hides error details in production", async () => {
     
     app.onError((err, c) => {
       if (err instanceof RegistryError) {
-        return c.json(err.toResponse(), err.statusCode as any);
+        return c.json(err.toResponse(), err.statusCode);
       }
       const isDev = isDevelopment();
       return c.json({
@@ -122,7 +122,7 @@ Deno.test("onError handler - includes error details in development", async () =>
     
     app.onError((err, c) => {
       if (err instanceof RegistryError) {
-        return c.json(err.toResponse(), err.statusCode as any);
+        return c.json(err.toResponse(), err.statusCode);
       }
       const isDev = isDevelopment();
       return c.json({
@@ -157,7 +157,7 @@ Deno.test("onError handler - allows successful requests through", async () => {
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode as any);
+      return c.json(err.toResponse(), err.statusCode);
     }
     return c.json({ error: "internal server error" }, 500);
   });
@@ -179,7 +179,7 @@ Deno.test("onError handler - handles multiple error types", async () => {
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode as any);
+      return c.json(err.toResponse(), err.statusCode);
     }
     return c.json({ error: "internal server error" }, 500);
   });
