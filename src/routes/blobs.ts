@@ -8,7 +8,7 @@ import { Hono } from "hono";
 import { ensureDir } from "@std/fs";
 import { join, resolve } from "@std/path";
 import { FilesystemStorage } from "../storage/filesystem.ts";
-import { calculateDigest, isValidDigest, parseDigest } from "../services/digest.ts";
+import { createDigestStream, isValidDigest, parseDigest } from "../services/digest.ts";
 import { getConfig } from "../config.ts";
 import {
   blobUploadUnknown,
@@ -193,28 +193,6 @@ export function createBlobRoutes(): Hono {
     }
 
     try {
-      // Write blob to temporary file in upload directory
-      const uploadPath = getUploadPath(uuid, config.storage.rootDirectory);
-      const tempFile = join(uploadPath, "data");
-
-      // Stream body to temporary file
-      const file = await Deno.open(tempFile, {
-        write: true,
-        create: true,
-        truncate: true,
-      });
-
-      try {
-        await body.pipeTo(file.writable);
-      } catch (error) {
-        try {
-          file.close();
-        } catch {
-          // Ignore close errors
-        }
-        throw error;
-      }
-
       // Parse digest to get the algorithm
       const parsedDigest = parseDigest(digest);
       if (!parsedDigest) {
@@ -222,25 +200,45 @@ export function createBlobRoutes(): Hono {
         return digestInvalid(digest, "invalid digest format");
       }
 
-      // Calculate digest from uploaded file using the same algorithm
-      const uploadedFile = await Deno.open(tempFile, { read: true });
-      const computedDigest = await calculateDigest(uploadedFile.readable, parsedDigest.algorithm);
-      uploadedFile.close();
+      // Create digest stream to compute hash while streaming data
+      // This approach uses stream tee'ing to simultaneously:
+      // 1. Calculate the digest (without re-reading from disk)
+      // 2. Write to temporary staging file
+      // 3. Stream to final storage location
+      // This reduces memory pressure by avoiding buffering the entire blob,
+      // and eliminates redundant disk I/O from re-reading the uploaded file.
+      const { stream: digestStream, digest: digestPromise } = createDigestStream(
+        parsedDigest.algorithm,
+      );
+
+      // Create a three-way tee to process the stream in parallel
+      // Branch 1: Digest calculation
+      // Branch 2: Storage (will be consumed by putBlob)
+      const [digestBranch, storageBranch] = body.tee();
+
+      // Start digest calculation in background
+      const computeDigestTask = digestBranch
+        .pipeThrough(digestStream)
+        .pipeTo(new WritableStream()); // Consume the digest stream
+
+      // Stream directly to storage (putBlob handles atomic writes internally)
+      // This eliminates the intermediate temp file read
+      await storage.putBlob(digest, storageBranch);
+
+      // Wait for digest calculation to complete
+      await computeDigestTask;
+      const computedDigest = await digestPromise;
 
       // Verify digest matches
       if (computedDigest !== digest) {
-        // Clean up upload session on digest mismatch
+        // Clean up on digest mismatch
+        await storage.deleteBlob(digest);
         await cleanupUpload(uuid, config.storage.rootDirectory);
         return digestInvalid(
           digest,
           `digest mismatch: computed ${computedDigest}`,
         );
       }
-
-      // Store blob in content-addressable storage
-      const blobFile = await Deno.open(tempFile, { read: true });
-      await storage.putBlob(digest, blobFile.readable);
-      blobFile.close();
 
       // Create repository layer link
       await storage.linkBlob(name, digest);
