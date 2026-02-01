@@ -12,7 +12,7 @@ Deno.test("onError handler - catches and formats RegistryError", async () => {
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode);
+      return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
     }
     return c.json({ error: "internal server error" }, 500);
   });
@@ -49,7 +49,7 @@ Deno.test("onError handler - catches generic errors and returns 500", async () =
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode);
+      return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
     }
     return c.json({ error: "internal server error" }, 500);
   });
@@ -82,12 +82,12 @@ Deno.test("onError handler - hides error details in production", async () => {
     
     app.onError((err, c) => {
       if (err instanceof RegistryError) {
-        return c.json(err.toResponse(), err.statusCode);
+        return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
       }
       const isDev = isDevelopment();
       return c.json({
         error: "internal server error",
-        detail: isDev ? String(err) : undefined
+        ...(isDev && { detail: String(err) })
       }, 500);
     });
     
@@ -100,8 +100,9 @@ Deno.test("onError handler - hides error details in production", async () => {
 
     assertEquals(res.status, 500);
     const body = await res.json();
-    // In production, detail should be undefined
+    // In production, detail should not be present
     assertEquals(body.detail, undefined);
+    assertEquals(body.error, "internal server error");
   } finally {
     // Restore original env
     if (originalEnv) {
@@ -122,12 +123,12 @@ Deno.test("onError handler - includes error details in development", async () =>
     
     app.onError((err, c) => {
       if (err instanceof RegistryError) {
-        return c.json(err.toResponse(), err.statusCode);
+        return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
       }
       const isDev = isDevelopment();
       return c.json({
         error: "internal server error",
-        detail: isDev ? String(err) : undefined
+        ...(isDev && { detail: String(err) })
       }, 500);
     });
     
@@ -142,6 +143,7 @@ Deno.test("onError handler - includes error details in development", async () =>
     const body = await res.json();
     // In development, detail should contain error string
     assertEquals(typeof body.detail, "string");
+    assertEquals(body.error, "internal server error");
   } finally {
     // Restore original env
     if (originalEnv) {
@@ -157,7 +159,7 @@ Deno.test("onError handler - allows successful requests through", async () => {
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode);
+      return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
     }
     return c.json({ error: "internal server error" }, 500);
   });
@@ -179,7 +181,7 @@ Deno.test("onError handler - handles multiple error types", async () => {
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode);
+      return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
     }
     return c.json({ error: "internal server error" }, 500);
   });

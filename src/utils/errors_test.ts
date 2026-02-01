@@ -198,5 +198,4 @@ Deno.test("all error codes have correct status codes", () => {
   assertEquals(ErrorStatusCodes[ErrorCodes.DENIED], 403);
   assertEquals(ErrorStatusCodes[ErrorCodes.UNSUPPORTED], 415);
   assertEquals(ErrorStatusCodes[ErrorCodes.TOOMANYREQUESTS], 429);
-  assertEquals(ErrorStatusCodes[ErrorCodes.UNKNOWN], 500);
 });
