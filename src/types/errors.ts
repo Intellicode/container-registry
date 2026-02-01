@@ -28,7 +28,7 @@ export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
 /**
  * HTTP status codes for each error type.
  */
-export const ErrorStatusCodes: Record<ErrorCode, number> = {
+export const ErrorStatusCodes = {
   [ErrorCodes.BLOB_UNKNOWN]: 404,
   [ErrorCodes.BLOB_UPLOAD_INVALID]: 400,
   [ErrorCodes.BLOB_UPLOAD_UNKNOWN]: 404,
@@ -43,7 +43,9 @@ export const ErrorStatusCodes: Record<ErrorCode, number> = {
   [ErrorCodes.DENIED]: 403,
   [ErrorCodes.UNSUPPORTED]: 415,
   [ErrorCodes.TOOMANYREQUESTS]: 429,
-};
+} as const;
+
+export type ErrorStatusCode = (typeof ErrorStatusCodes)[ErrorCode];
 
 /**
  * Single error entry in an OCI error response.
@@ -66,7 +68,7 @@ export interface OCIErrorResponse {
  */
 export class RegistryError extends Error {
   readonly code: ErrorCode;
-  readonly statusCode: number;
+  readonly statusCode: ErrorStatusCode;
   readonly detail?: unknown;
 
   constructor(code: ErrorCode, message: string, detail?: unknown) {
@@ -86,7 +88,7 @@ export class RegistryError extends Error {
         {
           code: this.code,
           message: this.message,
-          detail: this.detail,
+          ...(this.detail !== undefined && { detail: this.detail }),
         },
       ],
     };
