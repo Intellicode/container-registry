@@ -2,7 +2,7 @@
  * OCI-compliant error response utilities.
  */
 
-import { ErrorCodes, type ErrorCode, ErrorStatusCodes, type OCIErrorResponse, RegistryError } from "../types/errors.ts";
+import { ErrorCodes, type ErrorCode, ErrorStatusCodes, type OCIErrorResponse } from "../types/errors.ts";
 
 /**
  * Creates an OCI-compliant JSON error response.
@@ -30,21 +30,6 @@ export function ociError(
 
   return new Response(JSON.stringify(body), {
     status: statusCode,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-}
-
-/**
- * Creates an error response from a RegistryError instance.
- *
- * @param error - The RegistryError to convert
- * @returns Response object with proper status code and error payload
- */
-export function registryErrorToResponse(error: RegistryError): Response {
-  return new Response(JSON.stringify(error.toResponse()), {
-    status: error.statusCode,
     headers: {
       "Content-Type": "application/json",
     },

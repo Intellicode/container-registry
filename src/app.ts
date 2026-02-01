@@ -6,6 +6,7 @@ import { type Context, Hono, type Next } from "hono";
 import { logger } from "hono/logger";
 import { RegistryError } from "./types/errors.ts";
 import { createV2Routes } from "./routes/v2.ts";
+import { isDevelopment } from "./middleware/errors.ts";
 
 /**
  * Creates and configures the Hono application.
@@ -25,17 +26,9 @@ export function createApp(): Hono {
 
     // Handle unexpected errors - return generic 500 error
     // Never expose stack traces or internal error details to clients
-    const isDev = Deno.env.get("DENO_ENV") === "development" ||
-      Deno.env.get("NODE_ENV") === "development";
-
     const body = {
-      errors: [
-        {
-          code: "UNSUPPORTED",
-          message: "internal server error",
-          detail: isDev ? String(err) : undefined,
-        },
-      ],
+      error: "internal server error",
+      detail: isDevelopment() ? String(err) : undefined,
     };
 
     return c.json(body, 500);

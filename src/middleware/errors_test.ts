@@ -7,14 +7,14 @@ import { Hono } from "hono";
 import { isDevelopment } from "./errors.ts";
 import { ErrorCodes, RegistryError } from "../types/errors.ts";
 
-Deno.test("errorHandler via onError - catches and formats RegistryError", async () => {
+Deno.test("onError handler - catches and formats RegistryError", async () => {
   const app = new Hono();
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
       return c.json(err.toResponse(), err.statusCode as any);
     }
-    return c.json({ errors: [{ code: "UNSUPPORTED", message: "internal server error" }] }, 500);
+    return c.json({ error: "internal server error" }, 500);
   });
   
   app.get("/test", () => {
@@ -44,14 +44,14 @@ Deno.test("errorHandler via onError - catches and formats RegistryError", async 
   });
 });
 
-Deno.test("errorHandler via onError - catches generic errors and returns 500", async () => {
+Deno.test("onError handler - catches generic errors and returns 500", async () => {
   const app = new Hono();
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
       return c.json(err.toResponse(), err.statusCode as any);
     }
-    return c.json({ errors: [{ code: "UNSUPPORTED", message: "internal server error" }] }, 500);
+    return c.json({ error: "internal server error" }, 500);
   });
   
   app.get("/test", () => {
@@ -66,11 +66,10 @@ Deno.test("errorHandler via onError - catches generic errors and returns 500", a
   assertEquals(contentType?.startsWith("application/json"), true);
 
   const body = await res.json();
-  assertEquals(body.errors[0].code, "UNSUPPORTED");
-  assertEquals(body.errors[0].message, "internal server error");
+  assertEquals(body.error, "internal server error");
 });
 
-Deno.test("errorHandler via onError - hides error details in production", async () => {
+Deno.test("onError handler - hides error details in production", async () => {
   // Save original env
   const originalEnv = Deno.env.get("DENO_ENV");
 
@@ -87,11 +86,8 @@ Deno.test("errorHandler via onError - hides error details in production", async 
       }
       const isDev = isDevelopment();
       return c.json({
-        errors: [{
-          code: "UNSUPPORTED",
-          message: "internal server error",
-          detail: isDev ? String(err) : undefined
-        }]
+        error: "internal server error",
+        detail: isDev ? String(err) : undefined
       }, 500);
     });
     
@@ -105,7 +101,7 @@ Deno.test("errorHandler via onError - hides error details in production", async 
     assertEquals(res.status, 500);
     const body = await res.json();
     // In production, detail should be undefined
-    assertEquals(body.errors[0].detail, undefined);
+    assertEquals(body.detail, undefined);
   } finally {
     // Restore original env
     if (originalEnv) {
@@ -114,7 +110,7 @@ Deno.test("errorHandler via onError - hides error details in production", async 
   }
 });
 
-Deno.test("errorHandler via onError - includes error details in development", async () => {
+Deno.test("onError handler - includes error details in development", async () => {
   // Save original env
   const originalEnv = Deno.env.get("DENO_ENV");
 
@@ -130,11 +126,8 @@ Deno.test("errorHandler via onError - includes error details in development", as
       }
       const isDev = isDevelopment();
       return c.json({
-        errors: [{
-          code: "UNSUPPORTED",
-          message: "internal server error",
-          detail: isDev ? String(err) : undefined
-        }]
+        error: "internal server error",
+        detail: isDev ? String(err) : undefined
       }, 500);
     });
     
@@ -148,7 +141,7 @@ Deno.test("errorHandler via onError - includes error details in development", as
     assertEquals(res.status, 500);
     const body = await res.json();
     // In development, detail should contain error string
-    assertEquals(typeof body.errors[0].detail, "string");
+    assertEquals(typeof body.detail, "string");
   } finally {
     // Restore original env
     if (originalEnv) {
@@ -159,14 +152,14 @@ Deno.test("errorHandler via onError - includes error details in development", as
   }
 });
 
-Deno.test("errorHandler via onError - allows successful requests through", async () => {
+Deno.test("onError handler - allows successful requests through", async () => {
   const app = new Hono();
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
       return c.json(err.toResponse(), err.statusCode as any);
     }
-    return c.json({ errors: [{ code: "UNSUPPORTED", message: "internal server error" }] }, 500);
+    return c.json({ error: "internal server error" }, 500);
   });
   
   app.get("/test", (c) => {
@@ -181,14 +174,14 @@ Deno.test("errorHandler via onError - allows successful requests through", async
   assertEquals(body, { success: true });
 });
 
-Deno.test("errorHandler via onError - handles multiple error types", async () => {
+Deno.test("onError handler - handles multiple error types", async () => {
   const app = new Hono();
   
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
       return c.json(err.toResponse(), err.statusCode as any);
     }
-    return c.json({ errors: [{ code: "UNSUPPORTED", message: "internal server error" }] }, 500);
+    return c.json({ error: "internal server error" }, 500);
   });
 
   app.get("/unauthorized", () => {
