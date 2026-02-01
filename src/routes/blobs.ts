@@ -6,9 +6,9 @@
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { ensureDir } from "@std/fs";
-import { join } from "@std/path";
+import { join, resolve } from "@std/path";
 import { FilesystemStorage } from "../storage/filesystem.ts";
-import { calculateDigest, isValidDigest } from "../services/digest.ts";
+import { calculateDigest, isValidDigest, parseDigest } from "../services/digest.ts";
 import { getConfig } from "../config.ts";
 import {
   blobUploadUnknown,
@@ -18,6 +18,7 @@ import {
 
 /**
  * Validates repository name according to OCI distribution spec.
+ * Centralizes validation logic to match FilesystemStorage requirements.
  * Format: [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*
  */
 function validateRepositoryName(name: string): boolean {
@@ -25,37 +26,65 @@ function validateRepositoryName(name: string): boolean {
     return false;
   }
 
-  // Split by forward slash for namespace support
   const components = name.split("/");
-
   for (const component of components) {
     if (!component) {
       return false;
     }
-
     // Each component must match [a-z0-9]+([._-][a-z0-9]+)*
     if (!/^[a-z0-9]+([._-][a-z0-9]+)*$/.test(component)) {
       return false;
     }
+    // Reject path traversal
+    if (component === "." || component === "..") {
+      return false;
+    }
   }
-
+  // Additional safety: ensure no backslashes or other path separators
+  if (name.includes("\\") || name.includes("\0")) {
+    return false;
+  }
   return true;
 }
 
 /**
- * Get the path for upload session storage.
+ * Validates UUID format to prevent path traversal attacks.
+ * UUID must be a valid v4 UUID format.
  */
-function getUploadPath(uuid: string): string {
-  const config = getConfig();
-  return join(config.storage.rootDirectory, "uploads", uuid);
+function isValidUUID(uuid: string): boolean {
+  // UUID v4 format: 8-4-4-4-12 hex digits
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid);
+}
+
+/**
+ * Get the path for upload session storage.
+ * Validates UUID and ensures path is within uploads directory.
+ */
+function getUploadPath(uuid: string, rootDirectory: string): string {
+  if (!isValidUUID(uuid)) {
+    throw new Error(`Invalid UUID format: ${uuid}`);
+  }
+  
+  const uploadsDir = join(rootDirectory, "uploads");
+  const uploadPath = join(uploadsDir, uuid);
+  
+  // Ensure resolved path is within uploads directory
+  const resolvedPath = resolve(uploadPath);
+  const resolvedUploadsDir = resolve(uploadsDir);
+  
+  if (!resolvedPath.startsWith(resolvedUploadsDir + "/") && resolvedPath !== resolvedUploadsDir) {
+    throw new Error(`Path traversal detected: ${uuid}`);
+  }
+  
+  return uploadPath;
 }
 
 /**
  * Check if an upload session exists.
  */
-async function uploadExists(uuid: string): Promise<boolean> {
+async function uploadExists(uuid: string, rootDirectory: string): Promise<boolean> {
   try {
-    const path = getUploadPath(uuid);
+    const path = getUploadPath(uuid, rootDirectory);
     const stat = await Deno.stat(path);
     return stat.isDirectory;
   } catch (error) {
@@ -63,6 +92,18 @@ async function uploadExists(uuid: string): Promise<boolean> {
       return false;
     }
     throw error;
+  }
+}
+
+/**
+ * Cleanup an upload session directory.
+ */
+async function cleanupUpload(uuid: string, rootDirectory: string): Promise<void> {
+  try {
+    const uploadPath = getUploadPath(uuid, rootDirectory);
+    await Deno.remove(uploadPath, { recursive: true });
+  } catch {
+    // Ignore cleanup errors
   }
 }
 
@@ -91,7 +132,7 @@ export function createBlobRoutes(): Hono {
 
     // Generate unique upload session ID
     const uuid = crypto.randomUUID();
-    const uploadPath = getUploadPath(uuid);
+    const uploadPath = getUploadPath(uuid, config.storage.rootDirectory);
 
     // Create upload directory
     await ensureDir(uploadPath);
@@ -116,6 +157,11 @@ export function createBlobRoutes(): Hono {
     const uuid = c.req.param("uuid");
     const digest = c.req.query("digest");
 
+    // Validate UUID format to prevent path traversal
+    if (!isValidUUID(uuid)) {
+      return blobUploadUnknown(uuid);
+    }
+
     // Validate repository name
     if (!validateRepositoryName(name)) {
       return nameInvalid(
@@ -134,19 +180,21 @@ export function createBlobRoutes(): Hono {
     }
 
     // Check if upload session exists
-    if (!(await uploadExists(uuid))) {
+    if (!(await uploadExists(uuid, config.storage.rootDirectory))) {
       return blobUploadUnknown(uuid);
     }
 
     // Get request body as stream
     const body = c.req.raw.body;
     if (!body) {
+      // Clean up upload session on error
+      await cleanupUpload(uuid, config.storage.rootDirectory);
       return digestInvalid(digest, "request body is empty");
     }
 
     try {
       // Write blob to temporary file in upload directory
-      const uploadPath = getUploadPath(uuid);
+      const uploadPath = getUploadPath(uuid, config.storage.rootDirectory);
       const tempFile = join(uploadPath, "data");
 
       // Stream body to temporary file
@@ -167,13 +215,22 @@ export function createBlobRoutes(): Hono {
         throw error;
       }
 
-      // Calculate digest from uploaded file
+      // Parse digest to get the algorithm
+      const parsedDigest = parseDigest(digest);
+      if (!parsedDigest) {
+        await cleanupUpload(uuid, config.storage.rootDirectory);
+        return digestInvalid(digest, "invalid digest format");
+      }
+
+      // Calculate digest from uploaded file using the same algorithm
       const uploadedFile = await Deno.open(tempFile, { read: true });
-      const computedDigest = await calculateDigest(uploadedFile.readable);
+      const computedDigest = await calculateDigest(uploadedFile.readable, parsedDigest.algorithm);
       uploadedFile.close();
 
       // Verify digest matches
       if (computedDigest !== digest) {
+        // Clean up upload session on digest mismatch
+        await cleanupUpload(uuid, config.storage.rootDirectory);
         return digestInvalid(
           digest,
           `digest mismatch: computed ${computedDigest}`,
@@ -189,7 +246,7 @@ export function createBlobRoutes(): Hono {
       await storage.linkBlob(name, digest);
 
       // Clean up upload session
-      await Deno.remove(uploadPath, { recursive: true });
+      await cleanupUpload(uuid, config.storage.rootDirectory);
 
       // Build blob location URL
       const blobUrl = `/v2/${name}/blobs/${digest}`;
@@ -201,12 +258,7 @@ export function createBlobRoutes(): Hono {
       return c.body(null, 201);
     } catch (error) {
       // Clean up on error
-      try {
-        const uploadPath = getUploadPath(uuid);
-        await Deno.remove(uploadPath, { recursive: true });
-      } catch {
-        // Ignore cleanup errors
-      }
+      await cleanupUpload(uuid, config.storage.rootDirectory);
       throw error;
     }
   });
