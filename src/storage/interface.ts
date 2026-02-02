@@ -100,14 +100,21 @@ export interface StorageDriver {
   /**
    * List all tags in a repository
    * @param repository - Repository name
+   * @param options - Pagination options
    * @returns Array of tag names
    */
-  listTags(repository: string): Promise<string[]>;
+  listTags(
+    repository: string,
+    options?: { limit?: number; last?: string },
+  ): Promise<string[]>;
 
   // Repository operations
   /**
    * List all repositories
+   * @param options - Pagination options
    * @returns Array of repository names
    */
-  listRepositories(): Promise<string[]>;
+  listRepositories(options?: { limit?: number; last?: string }): Promise<
+    string[]
+  >;
 }

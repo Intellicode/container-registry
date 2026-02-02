@@ -22,11 +22,17 @@ export interface AuthConfig {
   htpasswd?: string;
 }
 
+export interface PaginationConfig {
+  defaultLimit: number;
+  maxLimit: number;
+}
+
 export interface RegistryConfig {
   server: ServerConfig;
   storage: StorageConfig;
   log: LogConfig;
   auth: AuthConfig;
+  pagination: PaginationConfig;
 }
 
 function parsePort(portValue: string | undefined, defaultPort: number): number {
@@ -57,6 +63,16 @@ export function loadConfig(): RegistryConfig {
       realm: Deno.env.get("REGISTRY_AUTH_REALM") ?? "Registry",
       htpasswd: Deno.env.get("REGISTRY_AUTH_HTPASSWD"),
     },
+    pagination: {
+      defaultLimit: parsePositiveInt(
+        Deno.env.get("REGISTRY_PAGINATION_DEFAULT_LIMIT"),
+        100,
+      ),
+      maxLimit: parsePositiveInt(
+        Deno.env.get("REGISTRY_PAGINATION_MAX_LIMIT"),
+        1000,
+      ),
+    },
   };
 }
 
@@ -84,6 +100,17 @@ function parseAuthType(type: string | undefined): "none" | "basic" {
     default:
       return "none";
   }
+}
+
+function parsePositiveInt(
+  value: string | undefined,
+  defaultValue: number,
+): number {
+  const parsed = parseInt(value ?? "", 10);
+  if (isNaN(parsed) || parsed <= 0) {
+    return defaultValue;
+  }
+  return parsed;
 }
 
 /** Global configuration instance */
