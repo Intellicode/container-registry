@@ -10,7 +10,7 @@ import { getConfig } from "./src/config.ts";
 
 if (import.meta.main) {
   const config = getConfig();
-  const app = createApp();
+  const app = await createApp();
 
   console.log(
     `Container Registry starting on ${config.server.host}:${config.server.port}`,
