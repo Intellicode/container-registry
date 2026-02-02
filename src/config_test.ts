@@ -113,17 +113,27 @@ Deno.test("config: singleton pattern", () => {
 Deno.test("config: auth parsing", () => {
   resetConfig();
 
-  // Test true
-  Deno.env.set("REGISTRY_AUTH_ENABLED", "true");
-  assertEquals(loadConfig().auth.enabled, true);
+  // Test basic
+  Deno.env.set("REGISTRY_AUTH_TYPE", "basic");
+  assertEquals(loadConfig().auth.type, "basic");
 
-  // Test TRUE (case insensitive)
-  Deno.env.set("REGISTRY_AUTH_ENABLED", "TRUE");
-  assertEquals(loadConfig().auth.enabled, true);
+  // Test BASIC (case insensitive)
+  Deno.env.set("REGISTRY_AUTH_TYPE", "BASIC");
+  assertEquals(loadConfig().auth.type, "basic");
 
-  // Test false
-  Deno.env.set("REGISTRY_AUTH_ENABLED", "false");
-  assertEquals(loadConfig().auth.enabled, false);
+  // Test none
+  Deno.env.set("REGISTRY_AUTH_TYPE", "none");
+  assertEquals(loadConfig().auth.type, "none");
 
-  Deno.env.delete("REGISTRY_AUTH_ENABLED");
+  // Test default (should be none)
+  Deno.env.delete("REGISTRY_AUTH_TYPE");
+  assertEquals(loadConfig().auth.type, "none");
+
+  // Test htpasswd path
+  Deno.env.set("REGISTRY_AUTH_TYPE", "basic");
+  Deno.env.set("REGISTRY_AUTH_HTPASSWD", "/etc/registry/htpasswd");
+  assertEquals(loadConfig().auth.htpasswd, "/etc/registry/htpasswd");
+
+  Deno.env.delete("REGISTRY_AUTH_TYPE");
+  Deno.env.delete("REGISTRY_AUTH_HTPASSWD");
 });

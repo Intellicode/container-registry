@@ -7,13 +7,28 @@ import { logger } from "hono/logger";
 import { RegistryError } from "./types/errors.ts";
 import { createV2Routes } from "./routes/v2.ts";
 import { isDevelopment } from "./middleware/errors.ts";
+import { createAuthService } from "./services/auth.ts";
+import { getConfig } from "./config.ts";
 
 /**
  * Creates and configures the Hono application.
  */
-export function createApp(): Hono {
+export async function createApp(): Promise<Hono> {
   // Set strict: false to allow both /v2 and /v2/ to work
   const app = new Hono({ strict: false });
+
+  // Initialize auth service if needed
+  const config = getConfig();
+  let authService;
+  if (config.auth.type === "basic" && config.auth.htpasswd) {
+    try {
+      authService = await createAuthService(config.auth.htpasswd);
+      console.log(`Loaded ${authService.getCredentialCount()} users from htpasswd file`);
+    } catch (error) {
+      console.error(`Failed to initialize auth service: ${error}`);
+      throw error;
+    }
+  }
 
   // Configure error handler
   app.onError((err, c) => {
@@ -46,7 +61,7 @@ export function createApp(): Hono {
 
   // Mount v2 API routes at /v2
   // Note: Hono's route() adds the prefix, so routes defined in v2Routes are relative
-  app.route("/v2", createV2Routes());
+  app.route("/v2", createV2Routes(authService));
 
   return app;
 }

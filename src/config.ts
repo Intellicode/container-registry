@@ -17,8 +17,9 @@ export interface LogConfig {
 }
 
 export interface AuthConfig {
-  enabled: boolean;
+  type: "none" | "basic";
   realm: string;
+  htpasswd?: string;
 }
 
 export interface RegistryConfig {
@@ -52,8 +53,9 @@ export function loadConfig(): RegistryConfig {
       level: parseLogLevel(Deno.env.get("REGISTRY_LOG_LEVEL")),
     },
     auth: {
-      enabled: Deno.env.get("REGISTRY_AUTH_ENABLED")?.toLowerCase() === "true",
+      type: parseAuthType(Deno.env.get("REGISTRY_AUTH_TYPE")),
       realm: Deno.env.get("REGISTRY_AUTH_REALM") ?? "Registry",
+      htpasswd: Deno.env.get("REGISTRY_AUTH_HTPASSWD"),
     },
   };
 }
@@ -71,6 +73,16 @@ function parseLogLevel(
     case "info":
     default:
       return "info";
+  }
+}
+
+function parseAuthType(type: string | undefined): "none" | "basic" {
+  switch (type?.toLowerCase()) {
+    case "basic":
+      return "basic";
+    case "none":
+    default:
+      return "none";
   }
 }
 

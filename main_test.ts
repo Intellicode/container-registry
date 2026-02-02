@@ -4,14 +4,14 @@ import { resetConfig } from "./src/config.ts";
 
 Deno.test("V2 Endpoint Tests", async (t) => {
   // Store original env to restore later
-  const originalAuthEnabled = Deno.env.get("REGISTRY_AUTH_ENABLED");
+  const originalAuthType = Deno.env.get("REGISTRY_AUTH_TYPE");
   const originalAuthRealm = Deno.env.get("REGISTRY_AUTH_REALM");
 
   const restoreEnv = () => {
-    if (originalAuthEnabled !== undefined) {
-      Deno.env.set("REGISTRY_AUTH_ENABLED", originalAuthEnabled);
+    if (originalAuthType !== undefined) {
+      Deno.env.set("REGISTRY_AUTH_TYPE", originalAuthType);
     } else {
-      Deno.env.delete("REGISTRY_AUTH_ENABLED");
+      Deno.env.delete("REGISTRY_AUTH_TYPE");
     }
     if (originalAuthRealm !== undefined) {
       Deno.env.set("REGISTRY_AUTH_REALM", originalAuthRealm);
@@ -25,10 +25,10 @@ Deno.test("V2 Endpoint Tests", async (t) => {
     await t.step(
       "GET /v2/ returns 200 OK when auth is disabled",
       async () => {
-        Deno.env.set("REGISTRY_AUTH_ENABLED", "false");
+        Deno.env.set("REGISTRY_AUTH_TYPE", "none");
         resetConfig();
 
-        const app = createApp();
+        const app = await createApp();
         const response = await app.request("/v2/");
 
         assertEquals(response.status, 200);
@@ -38,10 +38,10 @@ Deno.test("V2 Endpoint Tests", async (t) => {
     await t.step(
       "GET /v2 (no trailing slash) returns 200 OK when auth is disabled",
       async () => {
-        Deno.env.set("REGISTRY_AUTH_ENABLED", "false");
+        Deno.env.set("REGISTRY_AUTH_TYPE", "none");
         resetConfig();
 
-        const app = createApp();
+        const app = await createApp();
         const response = await app.request("/v2");
 
         assertEquals(response.status, 200);
@@ -51,10 +51,10 @@ Deno.test("V2 Endpoint Tests", async (t) => {
     await t.step(
       "GET /v2/ returns Docker-Distribution-API-Version header",
       async () => {
-        Deno.env.set("REGISTRY_AUTH_ENABLED", "false");
+        Deno.env.set("REGISTRY_AUTH_TYPE", "none");
         resetConfig();
 
-        const app = createApp();
+        const app = await createApp();
         const response = await app.request("/v2/");
 
         assertEquals(
@@ -65,10 +65,10 @@ Deno.test("V2 Endpoint Tests", async (t) => {
     );
 
     await t.step("GET /v2/ returns empty JSON object", async () => {
-      Deno.env.set("REGISTRY_AUTH_ENABLED", "false");
+      Deno.env.set("REGISTRY_AUTH_TYPE", "none");
       resetConfig();
 
-      const app = createApp();
+      const app = await createApp();
       const response = await app.request("/v2/");
       const body = await response.json();
 
@@ -76,12 +76,12 @@ Deno.test("V2 Endpoint Tests", async (t) => {
     });
 
     await t.step(
-      "GET /v2/ returns 401 when auth is enabled and no credentials provided",
+      "GET /v2/ returns 401 when auth type is basic and no credentials provided",
       async () => {
-        Deno.env.set("REGISTRY_AUTH_ENABLED", "true");
+        Deno.env.set("REGISTRY_AUTH_TYPE", "basic");
         resetConfig();
 
-        const app = createApp();
+        const app = await createApp();
         const response = await app.request("/v2/");
 
         assertEquals(response.status, 401);
@@ -91,11 +91,11 @@ Deno.test("V2 Endpoint Tests", async (t) => {
     await t.step(
       "GET /v2/ includes WWW-Authenticate header when returning 401",
       async () => {
-        Deno.env.set("REGISTRY_AUTH_ENABLED", "true");
+        Deno.env.set("REGISTRY_AUTH_TYPE", "basic");
         Deno.env.set("REGISTRY_AUTH_REALM", "Registry");
         resetConfig();
 
-        const app = createApp();
+        const app = await createApp();
         const response = await app.request("/v2/");
 
         assertEquals(response.status, 401);
@@ -109,10 +109,10 @@ Deno.test("V2 Endpoint Tests", async (t) => {
     await t.step(
       "GET /v2/ returns OCI error format when unauthorized",
       async () => {
-        Deno.env.set("REGISTRY_AUTH_ENABLED", "true");
+        Deno.env.set("REGISTRY_AUTH_TYPE", "basic");
         resetConfig();
 
-        const app = createApp();
+        const app = await createApp();
         const response = await app.request("/v2/");
         const body = await response.json();
 
@@ -128,29 +128,12 @@ Deno.test("V2 Endpoint Tests", async (t) => {
       },
     );
 
-    await t.step(
-      "GET /v2/ with auth header passes when auth is enabled",
-      async () => {
-        Deno.env.set("REGISTRY_AUTH_ENABLED", "true");
-        resetConfig();
-
-        const app = createApp();
-        const response = await app.request("/v2/", {
-          headers: {
-            Authorization: "Basic dXNlcjpwYXNz", // user:pass in base64
-          },
-        });
-
-        assertEquals(response.status, 200);
-      },
-    );
-
     await t.step("GET /v2/ uses custom realm from config", async () => {
-      Deno.env.set("REGISTRY_AUTH_ENABLED", "true");
+      Deno.env.set("REGISTRY_AUTH_TYPE", "basic");
       Deno.env.set("REGISTRY_AUTH_REALM", "MyCustomRealm");
       resetConfig();
 
-      const app = createApp();
+      const app = await createApp();
       const response = await app.request("/v2/");
 
       assertEquals(response.status, 401);
