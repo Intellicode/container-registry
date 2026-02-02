@@ -8,6 +8,7 @@ import { createAuthMiddleware } from "../middleware/auth.ts";
 import { createBlobRoutes } from "./blobs.ts";
 import { createManifestRoutes } from "./manifests.ts";
 import { createTagRoutes } from "./tags.ts";
+import { createCatalogRoutes } from "./catalog.ts";
 import { getConfig } from "../config.ts";
 import type { AuthService } from "../services/auth.ts";
 
@@ -35,6 +36,9 @@ export function createV2Routes(authService?: AuthService): Hono {
 
   // Mount tag routes
   v2.route("/", createTagRoutes());
+
+  // Mount catalog routes
+  v2.route("/", createCatalogRoutes());
 
   return v2;
 }
