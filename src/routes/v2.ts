@@ -6,6 +6,7 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { createAuthMiddleware } from "../middleware/auth.ts";
 import { createBlobRoutes } from "./blobs.ts";
+import { createManifestRoutes } from "./manifests.ts";
 import { getConfig } from "../config.ts";
 
 /**
@@ -26,6 +27,9 @@ export function createV2Routes(): Hono {
 
   // Mount blob upload routes
   v2.route("/", createBlobRoutes());
+
+  // Mount manifest routes
+  v2.route("/", createManifestRoutes());
 
   return v2;
 }
