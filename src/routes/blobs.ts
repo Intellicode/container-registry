@@ -11,6 +11,7 @@ import { FilesystemStorage } from "../storage/filesystem.ts";
 import { createDigestStream, isValidDigest, parseDigest } from "../services/digest.ts";
 import { getConfig } from "../config.ts";
 import {
+  blobUnknown,
   blobUploadUnknown,
   digestInvalid,
   nameInvalid,
@@ -259,6 +260,182 @@ export function createBlobRoutes(): Hono {
       await cleanupUpload(uuid, config.storage.rootDirectory);
       throw error;
     }
+  });
+
+  /**
+   * HEAD /v2/<name>/blobs/<digest>
+   * Check if a blob exists.
+   */
+  blobs.on("HEAD", "/:name{.+}/blobs/:digest", async (c: Context) => {
+    const name = c.req.param("name");
+    const digest = c.req.param("digest");
+
+    // Validate repository name
+    if (!validateRepositoryName(name)) {
+      return nameInvalid(
+        name,
+        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+      );
+    }
+
+    // Validate digest format
+    if (!isValidDigest(digest)) {
+      return digestInvalid(digest, "invalid digest format");
+    }
+
+    // Check if blob exists in storage
+    const exists = await storage.hasBlob(digest);
+    if (!exists) {
+      return blobUnknown(digest);
+    }
+
+    // Get blob size
+    const size = await storage.getBlobSize(digest);
+    if (size === null) {
+      return blobUnknown(digest);
+    }
+
+    // Return 200 OK with headers
+    c.header("Content-Length", size.toString());
+    c.header("Docker-Content-Digest", digest);
+
+    return c.body(null, 200);
+  });
+
+  /**
+   * GET /v2/<name>/blobs/<digest>
+   * Download a blob.
+   */
+  blobs.get("/:name{.+}/blobs/:digest", async (c: Context) => {
+    const name = c.req.param("name");
+    const digest = c.req.param("digest");
+    const rangeHeader = c.req.header("Range");
+
+    // Validate repository name
+    if (!validateRepositoryName(name)) {
+      return nameInvalid(
+        name,
+        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+      );
+    }
+
+    // Validate digest format
+    if (!isValidDigest(digest)) {
+      return digestInvalid(digest, "invalid digest format");
+    }
+
+    // Get blob stream
+    const stream = await storage.getBlob(digest);
+    if (!stream) {
+      return blobUnknown(digest);
+    }
+
+    // Get blob size
+    const size = await storage.getBlobSize(digest);
+    if (size === null) {
+      return blobUnknown(digest);
+    }
+
+    // Handle Range requests
+    if (rangeHeader) {
+      // Parse range header (e.g., "bytes=0-1023")
+      const rangeMatch = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+      if (rangeMatch) {
+        const start = parseInt(rangeMatch[1], 10);
+        const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : size - 1;
+
+        // Validate range
+        if (start >= size || start < 0 || end < start || end >= size) {
+          c.header("Content-Range", `bytes */${size}`);
+          return c.body("Requested range not satisfiable", 416);
+        }
+
+        // Create a range stream by skipping to offset and limiting bytes
+        const contentLength = end - start + 1;
+        
+        // Read and discard bytes until start position
+        let bytesRead = 0;
+        const reader = stream.getReader();
+        
+        // Skip to start position
+        while (bytesRead < start) {
+          const { done, value } = await reader.read();
+          if (done) {
+            return c.body("Unexpected end of stream", 500);
+          }
+          const toSkip = Math.min(value.length, start - bytesRead);
+          bytesRead += toSkip;
+          
+          // If we haven't skipped the entire chunk, we need to handle partial chunk
+          if (toSkip < value.length) {
+            // Create a new stream with the remaining data from this chunk
+            const partialChunk = value.slice(toSkip);
+            let remainingBytes = contentLength;
+            
+            const rangeStream = new ReadableStream({
+              async start(controller) {
+                // Enqueue the partial chunk first
+                if (remainingBytes > 0) {
+                  const toEnqueue = partialChunk.slice(0, Math.min(partialChunk.length, remainingBytes));
+                  controller.enqueue(toEnqueue);
+                  remainingBytes -= toEnqueue.length;
+                }
+                
+                // Continue reading from the original stream
+                while (remainingBytes > 0) {
+                  const { done, value } = await reader.read();
+                  if (done) {
+                    controller.close();
+                    return;
+                  }
+                  const toEnqueue = value.slice(0, Math.min(value.length, remainingBytes));
+                  controller.enqueue(toEnqueue);
+                  remainingBytes -= toEnqueue.length;
+                }
+                controller.close();
+              },
+            });
+            
+            c.header("Content-Length", contentLength.toString());
+            c.header("Content-Range", `bytes ${start}-${end}/${size}`);
+            c.header("Content-Type", "application/octet-stream");
+            c.header("Docker-Content-Digest", digest);
+            return c.body(rangeStream, 206);
+          }
+        }
+        
+        // Create limited stream for the range
+        let remainingBytes = contentLength;
+        const rangeStream = new ReadableStream({
+          async start(controller) {
+            while (remainingBytes > 0) {
+              const { done, value } = await reader.read();
+              if (done) {
+                controller.close();
+                return;
+              }
+              const toEnqueue = value.slice(0, Math.min(value.length, remainingBytes));
+              controller.enqueue(toEnqueue);
+              remainingBytes -= toEnqueue.length;
+            }
+            controller.close();
+          },
+        });
+
+        c.header("Content-Length", contentLength.toString());
+        c.header("Content-Range", `bytes ${start}-${end}/${size}`);
+        c.header("Content-Type", "application/octet-stream");
+        c.header("Docker-Content-Digest", digest);
+        return c.body(rangeStream, 206);
+      }
+    }
+
+    // Return full blob
+    c.header("Content-Length", size.toString());
+    c.header("Content-Type", "application/octet-stream");
+    c.header("Docker-Content-Digest", digest);
+
+    return c.body(stream, 200);
   });
 
   return blobs;
