@@ -321,3 +321,353 @@ Deno.test("GET /v2/<name>/blobs/<digest> - invalid repository name", async () =>
     await cleanupTestDir(testDir);
   }
 });
+
+// Story 012: Chunked Upload Tests
+
+Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload first chunk", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    assertEquals(initiateRes.status, 202);
+
+    const uploadUrl = initiateRes.headers.get("Location");
+    const uuid = initiateRes.headers.get("Docker-Upload-UUID");
+
+    // Upload first chunk
+    const chunk1 = new TextEncoder().encode("Hello ");
+    const patchReq = new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "Content-Length": chunk1.length.toString(),
+        "Content-Range": "0-5",
+      },
+      body: createStream(chunk1),
+    });
+
+    const patchRes = await app.fetch(patchReq);
+    assertEquals(patchRes.status, 202);
+    assertEquals(patchRes.headers.get("Location"), `/myrepo/blobs/uploads/${uuid}`);
+    assertEquals(patchRes.headers.get("Docker-Upload-UUID"), uuid);
+    assertEquals(patchRes.headers.get("Range"), "0-5");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload multiple chunks", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    assertEquals(initiateRes.status, 202);
+    const uploadUrl = initiateRes.headers.get("Location");
+
+    // Upload first chunk
+    const chunk1 = new TextEncoder().encode("Hello ");
+    const patch1Req = new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Range": "0-5",
+      },
+      body: createStream(chunk1),
+    });
+    const patch1Res = await app.fetch(patch1Req);
+    assertEquals(patch1Res.status, 202);
+    assertEquals(patch1Res.headers.get("Range"), "0-5");
+
+    // Upload second chunk
+    const chunk2 = new TextEncoder().encode("World!");
+    const patch2Req = new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Range": "6-11",
+      },
+      body: createStream(chunk2),
+    });
+    const patch2Res = await app.fetch(patch2Req);
+    assertEquals(patch2Res.status, 202);
+    assertEquals(patch2Res.headers.get("Range"), "0-11");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - invalid Content-Range", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    const uploadUrl = initiateRes.headers.get("Location");
+
+    // Try to upload with invalid range format
+    const chunk = new TextEncoder().encode("test");
+    const patchReq = new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Range": "invalid-range",
+      },
+      body: createStream(chunk),
+    });
+
+    const patchRes = await app.fetch(patchReq);
+    assertEquals(patchRes.status, 400);
+    const body = await patchRes.json();
+    assertEquals(body.errors[0].code, "BLOB_UPLOAD_INVALID");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - non-contiguous range", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    const uploadUrl = initiateRes.headers.get("Location");
+
+    // Upload first chunk
+    const chunk1 = new TextEncoder().encode("Hello ");
+    const patch1Req = new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Range": "0-5",
+      },
+      body: createStream(chunk1),
+    });
+    await app.fetch(patch1Req);
+
+    // Try to upload non-contiguous chunk (should start at 6, not 10)
+    const chunk2 = new TextEncoder().encode("World!");
+    const patch2Req = new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Range": "10-15",
+      },
+      body: createStream(chunk2),
+    });
+
+    const patch2Res = await app.fetch(patch2Req);
+    assertEquals(patch2Res.status, 416);
+    const body = await patch2Res.json();
+    assertEquals(body.errors[0].code, "RANGE_NOT_SATISFIABLE");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("PUT /v2/<name>/blobs/uploads/<uuid> - complete chunked upload", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    const uploadUrl = initiateRes.headers.get("Location");
+
+    // Upload chunks via PATCH
+    const chunk1 = new TextEncoder().encode("Hello ");
+    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: { "Content-Range": "0-5" },
+      body: createStream(chunk1),
+    }));
+
+    const chunk2 = new TextEncoder().encode("World!");
+    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: { "Content-Range": "6-11" },
+      body: createStream(chunk2),
+    }));
+
+    // Complete upload with PUT (no body, all data already uploaded)
+    const completeData = new TextEncoder().encode("Hello World!");
+    const expectedDigest = "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
+
+    const putReq = new Request(`http://localhost${uploadUrl}?digest=${expectedDigest}`, {
+      method: "PUT",
+    });
+
+    const putRes = await app.fetch(putReq);
+    assertEquals(putRes.status, 201);
+    assertEquals(putRes.headers.get("Docker-Content-Digest"), expectedDigest);
+    assertEquals(putRes.headers.get("Location"), `/myrepo/blobs/${expectedDigest}`);
+
+    // Verify blob was stored correctly
+    const storage = new FilesystemStorage(testDir);
+    const blobStream = await storage.getBlob(expectedDigest);
+    if (blobStream) {
+      const content = await readStream(blobStream);
+      assertEquals(content, completeData);
+    }
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("PUT /v2/<name>/blobs/uploads/<uuid> - complete chunked upload with final chunk in PUT", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    const uploadUrl = initiateRes.headers.get("Location");
+
+    // Upload first chunk via PATCH
+    const chunk1 = new TextEncoder().encode("Hello ");
+    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: { "Content-Range": "0-5" },
+      body: createStream(chunk1),
+    }));
+
+    // Complete upload with PUT including final chunk
+    const finalChunk = new TextEncoder().encode("World!");
+    const completeData = new TextEncoder().encode("Hello World!");
+    const expectedDigest = "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
+
+    const putReq = new Request(`http://localhost${uploadUrl}?digest=${expectedDigest}`, {
+      method: "PUT",
+      body: createStream(finalChunk),
+    });
+
+    const putRes = await app.fetch(putReq);
+    assertEquals(putRes.status, 201);
+    assertEquals(putRes.headers.get("Docker-Content-Digest"), expectedDigest);
+
+    // Verify blob was stored correctly
+    const storage = new FilesystemStorage(testDir);
+    const blobStream = await storage.getBlob(expectedDigest);
+    if (blobStream) {
+      const content = await readStream(blobStream);
+      assertEquals(content, completeData);
+    }
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("PUT /v2/<name>/blobs/uploads/<uuid> - digest mismatch on chunked upload", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    const uploadUrl = initiateRes.headers.get("Location");
+
+    // Upload data via PATCH
+    const chunk = new TextEncoder().encode("Hello World!");
+    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: { "Content-Range": "0-11" },
+      body: createStream(chunk),
+    }));
+
+    // Try to complete with wrong digest
+    const wrongDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+
+    const putReq = new Request(`http://localhost${uploadUrl}?digest=${wrongDigest}`, {
+      method: "PUT",
+    });
+
+    const putRes = await app.fetch(putReq);
+    assertEquals(putRes.status, 400);
+    const body = await putRes.json();
+    assertEquals(body.errors[0].code, "DIGEST_INVALID");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload session not found", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    const fakeUuid = "12345678-1234-1234-1234-123456789abc";
+    const chunk = new TextEncoder().encode("test");
+    const patchReq = new Request(`http://localhost/myrepo/blobs/uploads/${fakeUuid}`, {
+      method: "PATCH",
+      body: createStream(chunk),
+    });
+
+    const patchRes = await app.fetch(patchReq);
+    assertEquals(patchRes.status, 404);
+    const body = await patchRes.json();
+    assertEquals(body.errors[0].code, "BLOB_UPLOAD_UNKNOWN");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});

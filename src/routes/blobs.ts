@@ -109,6 +109,97 @@ async function cleanupUpload(uuid: string, rootDirectory: string): Promise<void>
 }
 
 /**
+ * Get the path for upload data file.
+ */
+function getUploadDataPath(uuid: string, rootDirectory: string): string {
+  const uploadPath = getUploadPath(uuid, rootDirectory);
+  return join(uploadPath, "data");
+}
+
+/**
+ * Get the path for upload start timestamp file.
+ */
+function getUploadStartedAtPath(uuid: string, rootDirectory: string): string {
+  const uploadPath = getUploadPath(uuid, rootDirectory);
+  return join(uploadPath, "startedat");
+}
+
+/**
+ * Get current upload size by checking data file size.
+ */
+async function getUploadSize(uuid: string, rootDirectory: string): Promise<number> {
+  try {
+    const dataPath = getUploadDataPath(uuid, rootDirectory);
+    const stat = await Deno.stat(dataPath);
+    return stat.size;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      return 0;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Parse Content-Range header.
+ * Formats: "0-1023", "bytes 0-1023", "0-1023/2048"
+ */
+function parseContentRange(rangeHeader: string | undefined): { start: number; end: number } | null {
+  if (!rangeHeader) {
+    return null;
+  }
+
+  // Remove "bytes " prefix if present
+  let range = rangeHeader.replace(/^bytes\s+/i, "");
+  
+  // Remove total size if present (e.g., "0-1023/2048" -> "0-1023")
+  range = range.split("/")[0];
+
+  const match = range.match(/^(\d+)-(\d+)$/);
+  if (!match) {
+    return null;
+  }
+
+  const start = parseInt(match[1], 10);
+  const end = parseInt(match[2], 10);
+
+  if (isNaN(start) || isNaN(end) || start > end) {
+    return null;
+  }
+
+  return { start, end };
+}
+
+/**
+ * Append chunk data to upload session.
+ */
+async function appendUploadChunk(
+  uuid: string,
+  rootDirectory: string,
+  chunk: ReadableStream<Uint8Array>,
+): Promise<void> {
+  const dataPath = getUploadDataPath(uuid, rootDirectory);
+  
+  // Open file for appending
+  const file = await Deno.open(dataPath, {
+    write: true,
+    create: true,
+    append: true,
+  });
+
+  try {
+    await chunk.pipeTo(file.writable);
+  } catch (error) {
+    try {
+      file.close();
+    } catch {
+      // Ignore close errors
+    }
+    throw error;
+  }
+}
+
+/**
  * Creates the blob upload routes handler.
  */
 export function createBlobRoutes(): Hono {
@@ -138,8 +229,12 @@ export function createBlobRoutes(): Hono {
     // Create upload directory
     await ensureDir(uploadPath);
 
-    // Build upload URL
-    const uploadUrl = `/v2/${name}/blobs/uploads/${uuid}`;
+    // Create startedat file with current timestamp
+    const startedAtPath = getUploadStartedAtPath(uuid, config.storage.rootDirectory);
+    await Deno.writeTextFile(startedAtPath, new Date().toISOString());
+
+    // Build upload URL (no /v2 prefix since routes are mounted under v2 router)
+    const uploadUrl = `/${name}/blobs/uploads/${uuid}`;
 
     // Return 202 Accepted with upload session details
     c.header("Location", uploadUrl);
@@ -150,8 +245,96 @@ export function createBlobRoutes(): Hono {
   });
 
   /**
+   * PATCH /v2/<name>/blobs/uploads/<uuid>
+   * Upload a chunk of data to an existing upload session.
+   */
+  blobs.patch("/:name{.+}/blobs/uploads/:uuid", async (c: Context) => {
+    const name = c.req.param("name");
+    const uuid = c.req.param("uuid");
+    const contentRangeHeader = c.req.header("Content-Range");
+
+    // Validate UUID format to prevent path traversal
+    if (!isValidUUID(uuid)) {
+      return blobUploadUnknown(uuid);
+    }
+
+    // Validate repository name
+    if (!validateRepositoryName(name)) {
+      return nameInvalid(
+        name,
+        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+      );
+    }
+
+    // Check if upload session exists
+    if (!(await uploadExists(uuid, config.storage.rootDirectory))) {
+      return blobUploadUnknown(uuid);
+    }
+
+    // Get current upload size
+    const currentSize = await getUploadSize(uuid, config.storage.rootDirectory);
+
+    // Parse and validate Content-Range header if present
+    if (contentRangeHeader) {
+      const range = parseContentRange(contentRangeHeader);
+      if (!range) {
+        return c.json({
+          errors: [{
+            code: "BLOB_UPLOAD_INVALID",
+            message: "invalid Content-Range header format",
+            detail: "expected format: <start>-<end> or bytes <start>-<end>",
+          }],
+        }, 400);
+      }
+
+      // Validate range is contiguous with current data
+      if (range.start !== currentSize) {
+        c.header("Range", `0-${currentSize - 1}`);
+        return c.json({
+          errors: [{
+            code: "RANGE_NOT_SATISFIABLE",
+            message: "range not contiguous with existing data",
+            detail: `expected range to start at ${currentSize}, got ${range.start}`,
+          }],
+        }, 416);
+      }
+    }
+
+    // Get request body
+    const body = c.req.raw.body;
+    if (!body) {
+      return c.json({
+        errors: [{
+          code: "BLOB_UPLOAD_INVALID",
+          message: "request body is empty",
+        }],
+      }, 400);
+    }
+
+    try {
+      // Append chunk to upload data
+      await appendUploadChunk(uuid, config.storage.rootDirectory, body);
+
+      // Get new upload size
+      const newSize = await getUploadSize(uuid, config.storage.rootDirectory);
+
+      // Build upload URL (no /v2 prefix since routes are mounted under v2 router)
+      const uploadUrl = `/${name}/blobs/uploads/${uuid}`;
+
+      // Return 202 Accepted with updated range
+      c.header("Location", uploadUrl);
+      c.header("Docker-Upload-UUID", uuid);
+      c.header("Range", `0-${newSize - 1}`);
+
+      return c.body(null, 202);
+    } catch (error) {
+      throw error;
+    }
+  });
+
+  /**
    * PUT /v2/<name>/blobs/uploads/<uuid>?digest=<digest>
-   * Completes a monolithic blob upload.
+   * Completes a monolithic blob upload or chunked upload with optional final chunk.
    */
   blobs.put("/:name{.+}/blobs/uploads/:uuid", async (c: Context) => {
     const name = c.req.param("name");
@@ -185,13 +368,12 @@ export function createBlobRoutes(): Hono {
       return blobUploadUnknown(uuid);
     }
 
-    // Get request body as stream
+    // Get request body as stream (may be empty if all data was uploaded via PATCH)
     const body = c.req.raw.body;
-    if (!body) {
-      // Clean up upload session on error
-      await cleanupUpload(uuid, config.storage.rootDirectory);
-      return digestInvalid(digest, "request body is empty");
-    }
+
+    // Check if there's existing upload data from PATCH requests
+    const existingSize = await getUploadSize(uuid, config.storage.rootDirectory);
+    const hasExistingData = existingSize > 0;
 
     try {
       // Parse digest to get the algorithm
@@ -199,6 +381,60 @@ export function createBlobRoutes(): Hono {
       if (!parsedDigest) {
         await cleanupUpload(uuid, config.storage.rootDirectory);
         return digestInvalid(digest, "invalid digest format");
+      }
+
+      let finalStream: ReadableStream<Uint8Array>;
+
+      if (hasExistingData && body) {
+        // Case 1: Has existing data from PATCH + final chunk in PUT body
+        // Need to combine existing data file with incoming body
+        const dataPath = getUploadDataPath(uuid, config.storage.rootDirectory);
+        const existingFile = await Deno.open(dataPath, { read: true });
+        
+        // Create a stream that reads existing data first, then the body
+        finalStream = new ReadableStream({
+          async start(controller) {
+            // Read and enqueue existing data
+            const existingReader = existingFile.readable.getReader();
+            try {
+              while (true) {
+                const { done, value } = await existingReader.read();
+                if (done) break;
+                controller.enqueue(value);
+              }
+            } finally {
+              existingReader.releaseLock();
+            }
+
+            // Read and enqueue new body data
+            if (body) {
+              const bodyReader = body.getReader();
+              try {
+                while (true) {
+                  const { done, value } = await bodyReader.read();
+                  if (done) break;
+                  controller.enqueue(value);
+                }
+              } finally {
+                bodyReader.releaseLock();
+              }
+            }
+            
+            controller.close();
+          },
+        });
+      } else if (hasExistingData && !body) {
+        // Case 2: Has existing data from PATCH, no body in PUT (all data already uploaded)
+        const dataPath = getUploadDataPath(uuid, config.storage.rootDirectory);
+        const existingFile = await Deno.open(dataPath, { read: true });
+        finalStream = existingFile.readable;
+      } else if (!hasExistingData && body) {
+        // Case 3: No existing data, body in PUT (monolithic upload)
+        finalStream = body;
+      } else {
+        // Case 4: No data at all
+        await cleanupUpload(uuid, config.storage.rootDirectory);
+        return digestInvalid(digest, "request body is empty");
       }
 
       // Create digest stream to compute hash while streaming data
@@ -215,7 +451,7 @@ export function createBlobRoutes(): Hono {
       // Create a three-way tee to process the stream in parallel
       // Branch 1: Digest calculation
       // Branch 2: Storage (will be consumed by putBlob)
-      const [digestBranch, storageBranch] = body.tee();
+      const [digestBranch, storageBranch] = finalStream.tee();
 
       // Start digest calculation in background
       const computeDigestTask = digestBranch
@@ -247,8 +483,8 @@ export function createBlobRoutes(): Hono {
       // Clean up upload session
       await cleanupUpload(uuid, config.storage.rootDirectory);
 
-      // Build blob location URL
-      const blobUrl = `/v2/${name}/blobs/${digest}`;
+      // Build blob location URL (no /v2 prefix since routes are mounted under v2 router)
+      const blobUrl = `/${name}/blobs/${digest}`;
 
       // Return 201 Created
       c.header("Location", blobUrl);
