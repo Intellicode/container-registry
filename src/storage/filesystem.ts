@@ -494,7 +494,10 @@ export class FilesystemStorage implements StorageDriver {
 
   // Tag operations
 
-  async listTags(repository: string): Promise<string[]> {
+  async listTags(
+    repository: string,
+    options?: { limit?: number; last?: string },
+  ): Promise<string[]> {
     try {
       const tagsPath = this.getTagsPath(repository);
       const tags: string[] = [];
@@ -505,7 +508,30 @@ export class FilesystemStorage implements StorageDriver {
         }
       }
 
-      return tags.sort();
+      // Sort alphabetically (lexicographic)
+      const sortedTags = tags.sort();
+
+      // Apply pagination
+      if (!options) {
+        return sortedTags;
+      }
+
+      let result = sortedTags;
+
+      // Filter by 'last' parameter (exclusive)
+      if (options.last) {
+        const lastIndex = result.findIndex((tag) => tag === options.last);
+        if (lastIndex !== -1) {
+          result = result.slice(lastIndex + 1);
+        }
+      }
+
+      // Apply limit
+      if (options.limit && options.limit > 0) {
+        result = result.slice(0, options.limit);
+      }
+
+      return result;
     } catch (error) {
       if (error instanceof Deno.errors.NotFound) {
         return [];
@@ -516,14 +542,39 @@ export class FilesystemStorage implements StorageDriver {
 
   // Repository operations
 
-  async listRepositories(): Promise<string[]> {
+  async listRepositories(options?: { limit?: number; last?: string }): Promise<
+    string[]
+  > {
     try {
       const repositoriesPath = join(this.rootPath, "repositories");
       const repositories: string[] = [];
 
       await this.scanRepositories(repositoriesPath, "", repositories);
 
-      return repositories.sort();
+      // Sort alphabetically (lexicographic)
+      const sortedRepos = repositories.sort();
+
+      // Apply pagination
+      if (!options) {
+        return sortedRepos;
+      }
+
+      let result = sortedRepos;
+
+      // Filter by 'last' parameter (exclusive)
+      if (options.last) {
+        const lastIndex = result.findIndex((repo) => repo === options.last);
+        if (lastIndex !== -1) {
+          result = result.slice(lastIndex + 1);
+        }
+      }
+
+      // Apply limit
+      if (options.limit && options.limit > 0) {
+        result = result.slice(0, options.limit);
+      }
+
+      return result;
     } catch (error) {
       if (error instanceof Deno.errors.NotFound) {
         return [];

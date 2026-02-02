@@ -281,3 +281,157 @@ Deno.test("GET /v2/<name>/tags/list - tags are sorted alphabetically", async () 
     await cleanupTestDir(testDir);
   }
 });
+
+Deno.test("GET /v2/<name>/tags/list - pagination with n parameter", async () => {
+  const testDir = await createTestDir();
+  
+  try {
+    // Configure storage
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    Deno.env.set("REGISTRY_AUTH_ENABLED", "false");
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const app = createTagRoutes();
+
+    // Create test blobs
+    const configBlob = new TextEncoder().encode(JSON.stringify({ architecture: "amd64" }));
+    const configDigest = "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
+    await storage.putBlob(configDigest, createStream(configBlob));
+
+    const layerBlob = new TextEncoder().encode("layer data");
+    const layerDigest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    await storage.putBlob(layerDigest, createStream(layerBlob));
+
+    // Create 10 tags
+    const tags = ["v1.0", "v1.1", "v1.2", "v1.3", "v1.4", "v1.5", "v1.6", "v1.7", "v1.8", "v1.9"];
+    
+    for (const tag of tags) {
+      const manifest = createTestManifest();
+      const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
+      const manifestDigest = await calculateDigest(manifestBytes);
+      await storage.putManifest("myimage", tag, manifestBytes, manifestDigest);
+    }
+
+    // Request first page with limit of 3
+    const req = new Request("http://localhost/myimage/tags/list?n=3");
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 200);
+    
+    const body = await res.json();
+    assertEquals(body.name, "myimage");
+    assertEquals(body.tags.length, 3);
+    assertEquals(body.tags, ["v1.0", "v1.1", "v1.2"]);
+    
+    // Should have Link header for next page
+    const linkHeader = res.headers.get("Link");
+    assertExists(linkHeader);
+    assertEquals(linkHeader?.includes('rel="next"'), true);
+    assertEquals(linkHeader?.includes("last=v1.2"), true);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/tags/list - pagination with n and last parameters", async () => {
+  const testDir = await createTestDir();
+  
+  try {
+    // Configure storage
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    Deno.env.set("REGISTRY_AUTH_ENABLED", "false");
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const app = createTagRoutes();
+
+    // Create test blobs
+    const configBlob = new TextEncoder().encode(JSON.stringify({ architecture: "amd64" }));
+    const configDigest = "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
+    await storage.putBlob(configDigest, createStream(configBlob));
+
+    const layerBlob = new TextEncoder().encode("layer data");
+    const layerDigest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    await storage.putBlob(layerDigest, createStream(layerBlob));
+
+    // Create 10 tags
+    const tags = ["v1.0", "v1.1", "v1.2", "v1.3", "v1.4", "v1.5", "v1.6", "v1.7", "v1.8", "v1.9"];
+    
+    for (const tag of tags) {
+      const manifest = createTestManifest();
+      const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
+      const manifestDigest = await calculateDigest(manifestBytes);
+      await storage.putManifest("myimage", tag, manifestBytes, manifestDigest);
+    }
+
+    // Request second page starting after v1.2
+    const req = new Request("http://localhost/myimage/tags/list?n=3&last=v1.2");
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 200);
+    
+    const body = await res.json();
+    assertEquals(body.name, "myimage");
+    assertEquals(body.tags.length, 3);
+    assertEquals(body.tags, ["v1.3", "v1.4", "v1.5"]);
+    
+    // Should have Link header for next page
+    const linkHeader = res.headers.get("Link");
+    assertExists(linkHeader);
+    assertEquals(linkHeader?.includes('rel="next"'), true);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/tags/list - pagination last page has no Link header", async () => {
+  const testDir = await createTestDir();
+  
+  try {
+    // Configure storage
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    Deno.env.set("REGISTRY_AUTH_ENABLED", "false");
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const app = createTagRoutes();
+
+    // Create test blobs
+    const configBlob = new TextEncoder().encode(JSON.stringify({ architecture: "amd64" }));
+    const configDigest = "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
+    await storage.putBlob(configDigest, createStream(configBlob));
+
+    const layerBlob = new TextEncoder().encode("layer data");
+    const layerDigest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    await storage.putBlob(layerDigest, createStream(layerBlob));
+
+    // Create 5 tags
+    const tags = ["v1.0", "v1.1", "v1.2", "v1.3", "v1.4"];
+    
+    for (const tag of tags) {
+      const manifest = createTestManifest();
+      const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
+      const manifestDigest = await calculateDigest(manifestBytes);
+      await storage.putManifest("myimage", tag, manifestBytes, manifestDigest);
+    }
+
+    // Request with limit larger than total tags
+    const req = new Request("http://localhost/myimage/tags/list?n=10");
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 200);
+    
+    const body = await res.json();
+    assertEquals(body.tags.length, 5);
+    
+    // Should NOT have Link header (no more pages)
+    const linkHeader = res.headers.get("Link");
+    assertEquals(linkHeader, null);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});

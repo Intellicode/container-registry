@@ -51,6 +51,9 @@ export function createTagRoutes(): Hono {
   /**
    * GET /v2/<name>/tags/list
    * List all tags for a repository.
+   * Supports pagination with query parameters:
+   * - n: limit number of results
+   * - last: last tag from previous page (exclusive)
    */
   tags.get("/:name{.+}/tags/list", async (c: Context) => {
     const name = c.req.param("name");
@@ -63,12 +66,32 @@ export function createTagRoutes(): Hono {
       );
     }
 
-    // Get tags from storage
-    const tagList = await storage.listTags(name);
+    // Parse pagination parameters
+    const nParam = c.req.query("n");
+    const lastParam = c.req.query("last");
+
+    let limit: number | undefined;
+    if (nParam) {
+      const parsed = parseInt(nParam, 10);
+      if (isNaN(parsed) || parsed <= 0) {
+        limit = config.pagination.defaultLimit;
+      } else {
+        // Enforce maximum limit
+        limit = Math.min(parsed, config.pagination.maxLimit);
+      }
+    } else {
+      limit = config.pagination.defaultLimit;
+    }
+
+    // Get tags from storage with pagination
+    const tagList = await storage.listTags(name, {
+      limit: limit + 1, // Fetch one extra to check if there are more results
+      last: lastParam,
+    });
 
     // Check if repository exists by verifying if the tags directory exists
     // If listTags returns empty array, we need to check if repository exists
-    if (tagList.length === 0) {
+    if (tagList.length === 0 && !lastParam) {
       // Check if repository exists by attempting to stat the repository directory
       try {
         const repoPath = `${config.storage.rootDirectory}/repositories/${name}`;
@@ -85,10 +108,23 @@ export function createTagRoutes(): Hono {
       }
     }
 
+    // Check if there are more results
+    const hasMore = tagList.length > limit;
+    const tags = hasMore ? tagList.slice(0, limit) : tagList;
+
+    // Build Link header if there are more results
+    if (hasMore && tags.length > 0) {
+      const lastTag = tags[tags.length - 1];
+      const linkUrl = `/v2/${name}/tags/list?n=${limit}&last=${
+        encodeURIComponent(lastTag)
+      }`;
+      c.header("Link", `<${linkUrl}>; rel="next"`);
+    }
+
     // Return tags response
     return c.json({
       name,
-      tags: tagList,
+      tags,
     });
   });
 
