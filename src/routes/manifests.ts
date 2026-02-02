@@ -12,6 +12,7 @@ import {
   digestInvalid,
   manifestBlobUnknown,
   manifestInvalid,
+  manifestUnacceptable,
   manifestUnknown,
   nameInvalid,
   unsupported,
@@ -197,6 +198,51 @@ function extractBlobDigests(manifest: ImageManifest | ImageIndex): string[] {
 }
 
 /**
+ * Parse Accept header and check if the manifest media type is acceptable.
+ * Returns true if no Accept header is present (accept anything) or if the
+ * manifest's media type matches one of the accepted types.
+ *
+ * @param acceptHeader - The Accept header value from the request
+ * @param manifestMediaType - The media type of the manifest
+ * @returns true if the manifest is acceptable, false otherwise
+ */
+function isAcceptable(acceptHeader: string | undefined, manifestMediaType: string): boolean {
+  // If no Accept header, accept anything
+  if (!acceptHeader) {
+    return true;
+  }
+
+  // Parse Accept header - format: type/subtype[;q=value], ...
+  const acceptedTypes = acceptHeader.split(",").map(type => {
+    const [mediaType] = type.trim().split(";");
+    return mediaType.trim();
+  });
+
+  // Check if manifest media type matches any accepted type
+  for (const acceptedType of acceptedTypes) {
+    // Handle wildcards
+    if (acceptedType === "*/*") {
+      return true;
+    }
+    
+    // Handle partial wildcards like "application/*"
+    if (acceptedType.endsWith("/*")) {
+      const prefix = acceptedType.slice(0, -2);
+      if (manifestMediaType.startsWith(prefix + "/")) {
+        return true;
+      }
+    }
+    
+    // Exact match
+    if (acceptedType === manifestMediaType) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Creates the manifest routes handler.
  */
 export function createManifestRoutes(): Hono {
@@ -211,6 +257,7 @@ export function createManifestRoutes(): Hono {
   manifests.get("/:name{.+}/manifests/:reference", async (c: Context) => {
     const name = c.req.param("name");
     const reference = c.req.param("reference");
+    const acceptHeader = c.req.header("Accept");
 
     // Validate repository name
     if (!validateRepositoryName(name)) {
@@ -238,6 +285,17 @@ export function createManifestRoutes(): Hono {
 
     const manifestObj = manifest as Record<string, unknown>;
     const mediaType = manifestObj.mediaType as string;
+
+    // Check content negotiation
+    if (!isAcceptable(acceptHeader, mediaType)) {
+      return manifestUnacceptable(
+        `manifest media type ${mediaType} does not match Accept header`,
+        {
+          acceptHeader,
+          manifestMediaType: mediaType,
+        },
+      );
+    }
 
     // Set headers and return manifest content
     c.header("Content-Type", mediaType || "application/octet-stream");
@@ -392,6 +450,7 @@ export function createManifestRoutes(): Hono {
   manifests.on("HEAD", "/:name{.+}/manifests/:reference", async (c: Context) => {
     const name = c.req.param("name");
     const reference = c.req.param("reference");
+    const acceptHeader = c.req.header("Accept");
 
     // Validate repository name
     if (!validateRepositoryName(name)) {
@@ -419,6 +478,17 @@ export function createManifestRoutes(): Hono {
 
     const manifestObj = manifest as Record<string, unknown>;
     const mediaType = manifestObj.mediaType as string;
+
+    // Check content negotiation
+    if (!isAcceptable(acceptHeader, mediaType)) {
+      return manifestUnacceptable(
+        `manifest media type ${mediaType} does not match Accept header`,
+        {
+          acceptHeader,
+          manifestMediaType: mediaType,
+        },
+      );
+    }
 
     // Return headers only
     c.header("Content-Type", mediaType || "application/octet-stream");

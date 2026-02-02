@@ -21,6 +21,7 @@ export const ErrorCodes = {
   DENIED: "DENIED",
   UNSUPPORTED: "UNSUPPORTED",
   TOOMANYREQUESTS: "TOOMANYREQUESTS",
+  MANIFEST_UNACCEPTABLE: "MANIFEST_UNACCEPTABLE",
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
@@ -43,6 +44,7 @@ export const ErrorStatusCodes = {
   [ErrorCodes.DENIED]: 403,
   [ErrorCodes.UNSUPPORTED]: 415,
   [ErrorCodes.TOOMANYREQUESTS]: 429,
+  [ErrorCodes.MANIFEST_UNACCEPTABLE]: 406,
 } as const;
 
 export type ErrorStatusCode = (typeof ErrorStatusCodes)[ErrorCode];

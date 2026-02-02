@@ -587,3 +587,256 @@ Deno.test("PUT /v2/<name>/manifests/<tag> - OCI index", async () => {
     await cleanupTestDir(testDir);
   }
 });
+
+Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation with matching Accept header", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      headers: {
+        "Accept": ManifestMediaTypes.OCI_MANIFEST,
+      },
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation with wildcard Accept header", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      headers: {
+        "Accept": "*/*",
+      },
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation rejects non-matching Accept", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      headers: {
+        "Accept": ManifestMediaTypes.DOCKER_MANIFEST_V2,
+      },
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 406);
+    const body = await res.json();
+    assertEquals(body.errors[0].code, "MANIFEST_UNACCEPTABLE");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("HEAD /v2/<name>/manifests/<tag> - content negotiation with matching Accept", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      method: "HEAD",
+      headers: {
+        "Accept": ManifestMediaTypes.OCI_MANIFEST,
+      },
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("HEAD /v2/<name>/manifests/<tag> - content negotiation rejects non-matching Accept", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      method: "HEAD",
+      headers: {
+        "Accept": ManifestMediaTypes.DOCKER_MANIFEST_V2,
+      },
+    });
+
+    const res = await app.fetch(req);
+
+    // HEAD requests return 406 but without body
+    assertEquals(res.status, 406);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
