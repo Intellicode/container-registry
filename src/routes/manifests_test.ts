@@ -506,7 +506,7 @@ Deno.test("HEAD /v2/<name>/manifests/<tag> - check manifest exists", async () =>
   }
 });
 
-Deno.test("DELETE /v2/<name>/manifests/<tag> - delete manifest", async () => {
+Deno.test("DELETE /v2/<name>/manifests/<digest> - delete manifest by digest", async () => {
   const testDir = await createTestDir();
 
   try {
@@ -540,7 +540,8 @@ Deno.test("DELETE /v2/<name>/manifests/<tag> - delete manifest", async () => {
 
     const app = createManifestRoutes();
 
-    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+    // Delete by digest
+    const req = new Request(`http://localhost/myrepo/manifests/${digest}`, {
       method: "DELETE",
     });
 
@@ -549,8 +550,160 @@ Deno.test("DELETE /v2/<name>/manifests/<tag> - delete manifest", async () => {
     assertEquals(res.status, 202);
 
     // Verify manifest is deleted
-    const getResult = await storage.getManifest("myrepo", "v1.0");
+    const getResult = await storage.getManifest("myrepo", digest);
     assertEquals(getResult, null);
+
+    // Verify tag pointing to the manifest is also deleted
+    const tagResult = await storage.getManifest("myrepo", "v1.0");
+    assertEquals(tagResult, null);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/manifests/<tag> - reject deletion by tag", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    // Try to delete by tag (should fail)
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      method: "DELETE",
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 415);
+    const body = await res.json();
+    assertEquals(body.errors[0].code, "UNSUPPORTED");
+    assertEquals(
+      body.errors[0].message.includes("deletion by tag is not supported"),
+      true,
+    );
+
+    // Verify manifest is still present
+    const getResult = await storage.getManifest("myrepo", "v1.0");
+    assertExists(getResult);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/manifests/<digest> - delete manifest not found", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createManifestRoutes();
+
+    const nonexistentDigest =
+      "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+
+    const req = new Request(`http://localhost/myrepo/manifests/${nonexistentDigest}`, {
+      method: "DELETE",
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 404);
+    const body = await res.json();
+    assertEquals(body.errors[0].code, "MANIFEST_UNKNOWN");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/manifests/<digest> - delete manifest removes all tags", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    // Create multiple tags pointing to the same manifest
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+    await storage.putManifest("myrepo", "latest", content, digest);
+    await storage.putManifest("myrepo", "stable", content, digest);
+
+    const app = createManifestRoutes();
+
+    // Delete by digest
+    const req = new Request(`http://localhost/myrepo/manifests/${digest}`, {
+      method: "DELETE",
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 202);
+
+    // Verify all tags are deleted
+    const tag1Result = await storage.getManifest("myrepo", "v1.0");
+    assertEquals(tag1Result, null);
+    const tag2Result = await storage.getManifest("myrepo", "latest");
+    assertEquals(tag2Result, null);
+    const tag3Result = await storage.getManifest("myrepo", "stable");
+    assertEquals(tag3Result, null);
+
+    // Verify manifest revision is deleted
+    const digestResult = await storage.getManifest("myrepo", digest);
+    assertEquals(digestResult, null);
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);

@@ -420,7 +420,8 @@ export function createManifestRoutes(): Hono {
 
   /**
    * DELETE /v2/<name>/manifests/<reference>
-   * Delete a manifest by tag or digest.
+   * Delete a manifest by digest (not tag).
+   * Per OCI spec, deletion must use digest reference.
    */
   manifests.delete("/:name{.+}/manifests/:reference", async (c: Context) => {
     const name = c.req.param("name");
@@ -434,13 +435,25 @@ export function createManifestRoutes(): Hono {
       );
     }
 
-    // Delete manifest
-    const deleted = await storage.deleteManifest(name, reference);
-    if (!deleted) {
-      return manifestUnknown(reference);
+    // OCI spec requires deletion by digest, not tag
+    if (!isValidDigest(reference)) {
+      return unsupported("deletion by tag is not supported, use digest");
     }
 
-    return c.body(null, 202);
+    // Delete manifest
+    try {
+      const deleted = await storage.deleteManifest(name, reference);
+      if (!deleted) {
+        return manifestUnknown(reference);
+      }
+
+      return c.body(null, 202);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not supported")) {
+        return unsupported(error.message);
+      }
+      throw error;
+    }
   });
 
   /**

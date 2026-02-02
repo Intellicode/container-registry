@@ -442,7 +442,7 @@ Deno.test("FilesystemStorage - manifest operations", async (t) => {
       },
     );
 
-    await t.step("deleteManifest removes a manifest by tag", async () => {
+    await t.step("deleteManifest removes a manifest by digest", async () => {
       const content = new TextEncoder().encode('{"delete": "test"}');
       const digest =
         "sha256:4444444444444444444444444444444444444444444444444444444444444444";
@@ -451,19 +451,24 @@ Deno.test("FilesystemStorage - manifest operations", async (t) => {
 
       await storage.putManifest(repository, tag, content, digest);
 
-      const deleted = await storage.deleteManifest(repository, tag);
+      const deleted = await storage.deleteManifest(repository, digest);
       assertEquals(deleted, true);
 
-      const result = await storage.getManifest(repository, tag);
-      assertEquals(result, null);
+      // Both tag and digest should no longer resolve
+      const tagResult = await storage.getManifest(repository, tag);
+      assertEquals(tagResult, null);
+      
+      const digestResult = await storage.getManifest(repository, digest);
+      assertEquals(digestResult, null);
     });
 
     await t.step(
       "deleteManifest returns false for non-existent manifest",
       async () => {
+        const digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
         const deleted = await storage.deleteManifest(
           "myorg/myimage",
-          "nonexistent",
+          digest,
         );
         assertEquals(deleted, false);
       },
