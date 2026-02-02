@@ -671,3 +671,248 @@ Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload session not found", as
     await cleanupTestDir(testDir);
   }
 });
+
+// Story 013: Upload Status and Resume Tests
+
+Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status of empty upload", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    assertEquals(initiateRes.status, 202);
+
+    const uploadUrl = initiateRes.headers.get("Location");
+    const uuid = initiateRes.headers.get("Docker-Upload-UUID");
+
+    // Check upload status (no data uploaded yet)
+    const statusReq = new Request(`http://localhost${uploadUrl}`, {
+      method: "GET",
+    });
+
+    const statusRes = await app.fetch(statusReq);
+    assertEquals(statusRes.status, 204);
+    assertEquals(statusRes.headers.get("Location"), `/myrepo/blobs/uploads/${uuid}`);
+    assertEquals(statusRes.headers.get("Docker-Upload-UUID"), uuid);
+    assertEquals(statusRes.headers.get("Range"), "0-0");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status after uploading data", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    const uploadUrl = initiateRes.headers.get("Location");
+    const uuid = initiateRes.headers.get("Docker-Upload-UUID");
+
+    // Upload first chunk
+    const chunk1 = new TextEncoder().encode("Hello ");
+    const patch1Req = new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Range": "0-5",
+      },
+      body: createStream(chunk1),
+    });
+    await app.fetch(patch1Req);
+
+    // Check upload status
+    const statusReq = new Request(`http://localhost${uploadUrl}`, {
+      method: "GET",
+    });
+
+    const statusRes = await app.fetch(statusReq);
+    assertEquals(statusRes.status, 204);
+    assertEquals(statusRes.headers.get("Location"), `/myrepo/blobs/uploads/${uuid}`);
+    assertEquals(statusRes.headers.get("Docker-Upload-UUID"), uuid);
+    assertEquals(statusRes.headers.get("Range"), "0-5");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status after multiple chunks", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    const uploadUrl = initiateRes.headers.get("Location");
+    const uuid = initiateRes.headers.get("Docker-Upload-UUID");
+
+    // Upload first chunk
+    const chunk1 = new TextEncoder().encode("Hello ");
+    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: { "Content-Range": "0-5" },
+      body: createStream(chunk1),
+    }));
+
+    // Upload second chunk
+    const chunk2 = new TextEncoder().encode("World!");
+    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: { "Content-Range": "6-11" },
+      body: createStream(chunk2),
+    }));
+
+    // Check upload status
+    const statusReq = new Request(`http://localhost${uploadUrl}`, {
+      method: "GET",
+    });
+
+    const statusRes = await app.fetch(statusReq);
+    assertEquals(statusRes.status, 204);
+    assertEquals(statusRes.headers.get("Location"), `/myrepo/blobs/uploads/${uuid}`);
+    assertEquals(statusRes.headers.get("Docker-Upload-UUID"), uuid);
+    assertEquals(statusRes.headers.get("Range"), "0-11");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - upload session not found", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    const fakeUuid = "12345678-1234-1234-1234-123456789abc";
+    const statusReq = new Request(`http://localhost/myrepo/blobs/uploads/${fakeUuid}`, {
+      method: "GET",
+    });
+
+    const statusRes = await app.fetch(statusReq);
+    assertEquals(statusRes.status, 404);
+    const body = await statusRes.json();
+    assertEquals(body.errors[0].code, "BLOB_UPLOAD_UNKNOWN");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - resume interrupted upload", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Initiate upload
+    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+    const initiateRes = await app.fetch(initiateReq);
+    const uploadUrl = initiateRes.headers.get("Location");
+
+    // Upload first chunk
+    const chunk1 = new TextEncoder().encode("Hello ");
+    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: { "Content-Range": "0-5" },
+      body: createStream(chunk1),
+    }));
+
+    // Simulate interruption - check status to find offset
+    const statusReq = new Request(`http://localhost${uploadUrl}`, {
+      method: "GET",
+    });
+    const statusRes = await app.fetch(statusReq);
+    assertEquals(statusRes.status, 204);
+    const range = statusRes.headers.get("Range");
+    assertEquals(range, "0-5");
+
+    // Resume upload from offset (6)
+    const chunk2 = new TextEncoder().encode("World!");
+    const resumeReq = new Request(`http://localhost${uploadUrl}`, {
+      method: "PATCH",
+      headers: { "Content-Range": "6-11" },
+      body: createStream(chunk2),
+    });
+    const resumeRes = await app.fetch(resumeReq);
+    assertEquals(resumeRes.status, 202);
+    assertEquals(resumeRes.headers.get("Range"), "0-11");
+
+    // Complete upload
+    const completeData = new TextEncoder().encode("Hello World!");
+    const expectedDigest = "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
+
+    const putReq = new Request(`http://localhost${uploadUrl}?digest=${expectedDigest}`, {
+      method: "PUT",
+    });
+    const putRes = await app.fetch(putReq);
+    assertEquals(putRes.status, 201);
+
+    // Verify blob was stored correctly
+    const storage = new FilesystemStorage(testDir);
+    const blobStream = await storage.getBlob(expectedDigest);
+    if (blobStream) {
+      const content = await readStream(blobStream);
+      assertEquals(content, completeData);
+    }
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - invalid UUID format", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    const invalidUuid = "not-a-valid-uuid";
+    const statusReq = new Request(`http://localhost/myrepo/blobs/uploads/${invalidUuid}`, {
+      method: "GET",
+    });
+
+    const statusRes = await app.fetch(statusReq);
+    assertEquals(statusRes.status, 404);
+    const body = await statusRes.json();
+    assertEquals(body.errors[0].code, "BLOB_UPLOAD_UNKNOWN");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
