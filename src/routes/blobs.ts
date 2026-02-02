@@ -245,6 +245,53 @@ export function createBlobRoutes(): Hono {
   });
 
   /**
+   * GET /v2/<name>/blobs/uploads/<uuid>
+   * Check upload session status.
+   */
+  blobs.get("/:name{.+}/blobs/uploads/:uuid", async (c: Context) => {
+    const name = c.req.param("name");
+    const uuid = c.req.param("uuid");
+
+    // Validate UUID format to prevent path traversal
+    if (!isValidUUID(uuid)) {
+      return blobUploadUnknown(uuid);
+    }
+
+    // Validate repository name
+    if (!validateRepositoryName(name)) {
+      return nameInvalid(
+        name,
+        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+      );
+    }
+
+    // Check if upload session exists
+    if (!(await uploadExists(uuid, config.storage.rootDirectory))) {
+      return blobUploadUnknown(uuid);
+    }
+
+    // Get current upload size
+    const currentSize = await getUploadSize(uuid, config.storage.rootDirectory);
+
+    // Build upload URL (no /v2 prefix since routes are mounted under v2 router)
+    const uploadUrl = `/${name}/blobs/uploads/${uuid}`;
+
+    // Return 204 No Content with upload status
+    c.header("Location", uploadUrl);
+    c.header("Docker-Upload-UUID", uuid);
+    
+    // Range header format: "0-<offset>" where offset is the last byte received
+    // If no data has been uploaded yet, return "0-0"
+    if (currentSize > 0) {
+      c.header("Range", `0-${currentSize - 1}`);
+    } else {
+      c.header("Range", "0-0");
+    }
+
+    return c.body(null, 204);
+  });
+
+  /**
    * PATCH /v2/<name>/blobs/uploads/<uuid>
    * Upload a chunk of data to an existing upload session.
    */
