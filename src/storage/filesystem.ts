@@ -366,6 +366,19 @@ export class FilesystemStorage implements StorageDriver {
     }
   }
 
+  async hasLayerLink(repository: string, digest: string): Promise<boolean> {
+    try {
+      const linkPath = this.getLayerLinkPath(repository, digest);
+      const stat = await Deno.stat(linkPath);
+      return stat.isFile;
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
   // Manifest operations
 
   async getManifest(
