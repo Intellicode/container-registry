@@ -916,3 +916,248 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - invalid UUID format", async () 
     await cleanupTestDir(testDir);
   }
 });
+
+// Story 014: Cross-Repository Blob Mount Tests
+
+Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - successful mount", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const app = createBlobRoutes();
+
+    // Setup: Create a blob in the source repository
+    const blobData = new TextEncoder().encode("shared layer content");
+    const digest = "sha256:6ed206c5b87fa6a726971de1eb927ab7743ff101a76f65f86ce8ba0b46a1f5ea";
+    
+    await storage.putBlob(digest, createStream(blobData));
+    await storage.linkBlob("sourceorg/sourceimage", digest);
+
+    // Attempt to mount the blob to a new repository
+    const mountReq = new Request(
+      `http://localhost/targetorg/targetimage/blobs/uploads/?mount=${digest}&from=sourceorg/sourceimage`,
+      {
+        method: "POST",
+      }
+    );
+
+    const mountRes = await app.fetch(mountReq);
+
+    // Should return 201 Created with blob location
+    assertEquals(mountRes.status, 201);
+    assertEquals(mountRes.headers.get("Location"), `/targetorg/targetimage/blobs/${digest}`);
+    assertEquals(mountRes.headers.get("Docker-Content-Digest"), digest);
+
+    // Verify the layer link was created in the target repository
+    const hasLink = await storage.hasLayerLink("targetorg/targetimage", digest);
+    assertEquals(hasLink, true);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - blob not found, fallback to upload", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Attempt to mount a non-existent blob
+    const nonexistentDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    const mountReq = new Request(
+      `http://localhost/targetorg/targetimage/blobs/uploads/?mount=${nonexistentDigest}&from=sourceorg/sourceimage`,
+      {
+        method: "POST",
+      }
+    );
+
+    const mountRes = await app.fetch(mountReq);
+
+    // Should fall back to normal upload initiation (202 Accepted)
+    assertEquals(mountRes.status, 202);
+    assertEquals(mountRes.headers.has("Docker-Upload-UUID"), true);
+    assertEquals(mountRes.headers.has("Location"), true);
+    assertEquals(mountRes.headers.get("Range"), "0-0");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - no source repository link, fallback", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const app = createBlobRoutes();
+
+    // Setup: Create a blob but don't link it to any repository
+    const blobData = new TextEncoder().encode("orphan blob");
+    const digest = "sha256:c677cc5041ae478df1c116afe26230521bf6a5735bad448289025ee883000a82";
+    
+    await storage.putBlob(digest, createStream(blobData));
+    // Note: Not calling linkBlob, so the blob exists but has no repository link
+
+    // Attempt to mount - should fail because source repo has no link
+    const mountReq = new Request(
+      `http://localhost/targetorg/targetimage/blobs/uploads/?mount=${digest}&from=sourceorg/sourceimage`,
+      {
+        method: "POST",
+      }
+    );
+
+    const mountRes = await app.fetch(mountReq);
+
+    // Should fall back to normal upload initiation
+    assertEquals(mountRes.status, 202);
+    assertEquals(mountRes.headers.has("Docker-Upload-UUID"), true);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - invalid source repository, fallback", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const app = createBlobRoutes();
+
+    // Setup: Create a blob in a valid repository
+    const blobData = new TextEncoder().encode("test blob");
+    const digest = "sha256:298d37cb0b7abbef2639ca7e5ff3f232678a9293146d610ac63f862e0da62b3b";
+    
+    await storage.putBlob(digest, createStream(blobData));
+    await storage.linkBlob("validrepo", digest);
+
+    // Attempt to mount with invalid source repository name (uppercase not allowed)
+    const mountReq = new Request(
+      `http://localhost/targetrepo/blobs/uploads/?mount=${digest}&from=INVALID-REPO`,
+      {
+        method: "POST",
+      }
+    );
+
+    const mountRes = await app.fetch(mountReq);
+
+    // Should fall back to normal upload initiation due to invalid source repo
+    assertEquals(mountRes.status, 202);
+    assertEquals(mountRes.headers.has("Docker-Upload-UUID"), true);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - invalid digest format, fallback", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Attempt to mount with invalid digest format
+    const mountReq = new Request(
+      `http://localhost/targetrepo/blobs/uploads/?mount=invalid-digest&from=sourcerepo`,
+      {
+        method: "POST",
+      }
+    );
+
+    const mountRes = await app.fetch(mountReq);
+
+    // Should fall back to normal upload initiation
+    assertEquals(mountRes.status, 202);
+    assertEquals(mountRes.headers.has("Docker-Upload-UUID"), true);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest> - missing from parameter, normal upload", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    
+    // Mount parameter provided but from parameter missing
+    const mountReq = new Request(
+      `http://localhost/targetrepo/blobs/uploads/?mount=${digest}`,
+      {
+        method: "POST",
+      }
+    );
+
+    const mountRes = await app.fetch(mountReq);
+
+    // Should initiate normal upload
+    assertEquals(mountRes.status, 202);
+    assertEquals(mountRes.headers.has("Docker-Upload-UUID"), true);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("POST /v2/<name>/blobs/uploads/ - mount across different repositories", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const app = createBlobRoutes();
+
+    // Setup: Create a blob in source repository
+    const blobData = new TextEncoder().encode("namespaced layer");
+    const digest = "sha256:483e5e9e14afafa90aa67370fe53fac1ee3c6f952af857685aa495c3841ade9d";
+    
+    await storage.putBlob(digest, createStream(blobData));
+    await storage.linkBlob("source", digest);
+
+    // Mount to a different repository
+    const mountReq = new Request(
+      `http://localhost/target/blobs/uploads/?mount=${digest}&from=source`,
+      {
+        method: "POST",
+      }
+    );
+
+    const mountRes = await app.fetch(mountReq);
+
+    // Should successfully mount
+    assertEquals(mountRes.status, 201);
+    assertEquals(mountRes.headers.get("Location"), `/target/blobs/${digest}`);
+    assertEquals(mountRes.headers.get("Docker-Content-Digest"), digest);
+
+    // Verify the layer link was created in the target repository
+    const hasLink = await storage.hasLayerLink("target", digest);
+    assertEquals(hasLink, true);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});

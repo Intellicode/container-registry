@@ -209,10 +209,16 @@ export function createBlobRoutes(): Hono {
 
   /**
    * POST /v2/<name>/blobs/uploads/
-   * Initiates a blob upload session.
+   * Initiates a blob upload session or mounts an existing blob from another repository.
+   * 
+   * Query parameters:
+   * - mount: digest to mount from another repository
+   * - from: source repository name
    */
   blobs.post("/:name{.+}/blobs/uploads/", async (c: Context) => {
     const name = c.req.param("name");
+    const mountDigest = c.req.query("mount");
+    const fromRepository = c.req.query("from");
 
     // Validate repository name
     if (!validateRepositoryName(name)) {
@@ -222,6 +228,39 @@ export function createBlobRoutes(): Hono {
       );
     }
 
+    // Handle blob mount request
+    if (mountDigest && fromRepository) {
+      // Validate source repository name
+      if (!validateRepositoryName(fromRepository)) {
+        // Fall back to normal upload initiation if source repo is invalid
+        // (per spec: if mount fails, fall back to upload)
+      } else if (isValidDigest(mountDigest)) {
+        // Check if blob exists in storage
+        const blobExists = await storage.hasBlob(mountDigest);
+        
+        // Check if source repository has a link to this blob
+        const hasSourceLink = await storage.hasLayerLink(fromRepository, mountDigest);
+        
+        if (blobExists && hasSourceLink) {
+          // Mount successful: create link in target repository
+          await storage.linkBlob(name, mountDigest);
+          
+          // Build blob location URL
+          const blobUrl = `/${name}/blobs/${mountDigest}`;
+          
+          // Return 201 Created with blob location
+          c.header("Location", blobUrl);
+          c.header("Docker-Content-Digest", mountDigest);
+          
+          return c.body(null, 201);
+        }
+      }
+      
+      // If mount fails (blob doesn't exist, no access, or invalid digest),
+      // fall back to normal upload initiation
+    }
+
+    // Normal upload initiation (or mount fallback)
     // Generate unique upload session ID
     const uuid = crypto.randomUUID();
     const uploadPath = getUploadPath(uuid, config.storage.rootDirectory);

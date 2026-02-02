@@ -54,6 +54,14 @@ export interface StorageDriver {
    */
   unlinkBlob(repository: string, digest: string): Promise<void>;
 
+  /**
+   * Check if a repository has a link to a blob (layer)
+   * @param repository - Repository name
+   * @param digest - The digest of the blob
+   * @returns true if layer link exists, false otherwise
+   */
+  hasLayerLink(repository: string, digest: string): Promise<boolean>;
+
   // Manifest operations
   /**
    * Retrieve a manifest by reference (tag or digest)
