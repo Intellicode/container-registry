@@ -390,7 +390,9 @@ export class FilesystemStorage implements StorageDriver {
 
       if (this.isDigest(reference)) {
         // Reference is already a digest
-        digest = reference;
+        // Check if the revision link exists
+        const revisionPath = this.getManifestRevisionPath(repository, reference);
+        digest = await Deno.readTextFile(revisionPath);
       } else {
         // Reference is a tag, read the link to get the digest
         const tagPath = this.getManifestTagPath(repository, reference);
@@ -419,7 +421,7 @@ export class FilesystemStorage implements StorageDriver {
         reader.releaseLock();
       }
 
-      // Combine chunks into a single Uint8Array
+      // Combine chunks into a Uint8Array
       const content = new Uint8Array(totalLength);
       let offset = 0;
       for (const chunk of chunks) {
@@ -471,18 +473,52 @@ export class FilesystemStorage implements StorageDriver {
     reference: string,
   ): Promise<boolean> {
     try {
-      if (this.isDigest(reference)) {
-        // Delete revision link
-        const revisionPath = this.getManifestRevisionPath(
-          repository,
-          reference,
-        );
-        await Deno.remove(revisionPath);
-      } else {
-        // Delete tag link
-        const tagPath = this.getManifestTagPath(repository, reference);
-        await Deno.remove(tagPath);
+      // OCI spec requires deletion by digest only
+      if (!this.isDigest(reference)) {
+        throw new Error("Deletion by tag is not supported, use digest");
       }
+
+      // Check if the manifest revision exists
+      const revisionPath = this.getManifestRevisionPath(repository, reference);
+      try {
+        await Deno.stat(revisionPath);
+      } catch (error) {
+        if (error instanceof Deno.errors.NotFound) {
+          return false;
+        }
+        throw error;
+      }
+
+      // Delete the manifest revision link
+      await Deno.remove(revisionPath);
+
+      // Find and delete all tags pointing to this digest
+      const tagsPath = this.getTagsPath(repository);
+      try {
+        for await (const entry of Deno.readDir(tagsPath)) {
+          if (entry.isDirectory) {
+            const tagLinkPath = this.getManifestTagPath(repository, entry.name);
+            try {
+              const tagDigest = await Deno.readTextFile(tagLinkPath);
+              if (tagDigest === reference) {
+                // This tag points to the deleted manifest, remove it
+                await Deno.remove(tagLinkPath);
+              }
+            } catch (error) {
+              // Ignore errors reading individual tags (they might be deleted concurrently)
+              if (!(error instanceof Deno.errors.NotFound)) {
+                throw error;
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // If tags directory doesn't exist, that's fine
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+      }
+
       return true;
     } catch (error) {
       if (error instanceof Deno.errors.NotFound) {
