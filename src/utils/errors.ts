@@ -219,3 +219,14 @@ export function tooManyRequests(
 ): Response {
   return ociError(ErrorCodes.TOOMANYREQUESTS, message);
 }
+
+/**
+ * Returns a MANIFEST_UNACCEPTABLE error response.
+ *
+ * @param message - Description of why the manifest is not acceptable
+ * @param detail - Optional additional details
+ * @returns 406 error response
+ */
+export function manifestUnacceptable(message: string, detail?: unknown): Response {
+  return ociError(ErrorCodes.MANIFEST_UNACCEPTABLE, message, detail);
+}
