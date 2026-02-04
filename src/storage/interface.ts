@@ -62,6 +62,13 @@ export interface StorageDriver {
    */
   hasLayerLink(repository: string, digest: string): Promise<boolean>;
 
+  /**
+   * Count how many repositories have a link to this blob
+   * @param digest - The digest of the blob
+   * @returns Number of repositories that reference this blob
+   */
+  countBlobReferences(digest: string): Promise<number>;
+
   // Manifest operations
   /**
    * Retrieve a manifest by reference (tag or digest)

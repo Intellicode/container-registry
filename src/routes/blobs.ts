@@ -760,5 +760,53 @@ export function createBlobRoutes(): Hono {
     return c.body(stream, 200);
   });
 
+  /**
+   * DELETE /v2/<name>/blobs/<digest>
+   * Delete a blob from a repository.
+   */
+  blobs.on("DELETE", "/:name{.+}/blobs/:digest", async (c: Context) => {
+    const name = c.req.param("name");
+    const digest = c.req.param("digest");
+
+    // Validate repository name
+    if (!validateRepositoryName(name)) {
+      return nameInvalid(
+        name,
+        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+      );
+    }
+
+    // Validate digest format
+    if (!isValidDigest(digest)) {
+      return digestInvalid(digest, "invalid digest format");
+    }
+
+    // Check if blob exists in storage
+    const exists = await storage.hasBlob(digest);
+    if (!exists) {
+      return blobUnknown(digest);
+    }
+
+    // Check if this repository has a link to the blob
+    const hasLink = await storage.hasLayerLink(name, digest);
+    if (!hasLink) {
+      return blobUnknown(digest);
+    }
+
+    // Remove repository's link to the blob
+    await storage.unlinkBlob(name, digest);
+
+    // Count remaining references to the blob across all repositories
+    const refCount = await storage.countBlobReferences(digest);
+
+    // Only delete the actual blob if no other repositories reference it
+    if (refCount === 0) {
+      await storage.deleteBlob(digest);
+    }
+
+    // Return 202 Accepted
+    return c.body(null, 202);
+  });
+
   return blobs;
 }

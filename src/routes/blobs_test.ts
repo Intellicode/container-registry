@@ -1161,3 +1161,196 @@ Deno.test("POST /v2/<name>/blobs/uploads/ - mount across different repositories"
     await cleanupTestDir(testDir);
   }
 });
+
+Deno.test("DELETE /v2/<name>/blobs/<digest> - successful deletion", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const app = createBlobRoutes();
+
+    // Setup: Create a blob and link it to a repository
+    const blobData = new TextEncoder().encode("test blob for deletion");
+    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    
+    await storage.putBlob(digest, createStream(blobData));
+    await storage.linkBlob("myrepo", digest);
+
+    // Delete the blob
+    const req = new Request(`http://localhost/myrepo/blobs/${digest}`, {
+      method: "DELETE",
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 202);
+
+    // Verify the link was removed
+    const hasLink = await storage.hasLayerLink("myrepo", digest);
+    assertEquals(hasLink, false);
+
+    // Verify the blob itself was deleted (no other references)
+    const blobExists = await storage.hasBlob(digest);
+    assertEquals(blobExists, false);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/blobs/<digest> - blob not found", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+    const digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+
+    const req = new Request(`http://localhost/myrepo/blobs/${digest}`, {
+      method: "DELETE",
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 404);
+    const body = await res.json();
+    assertEquals(body.errors[0].code, "BLOB_UNKNOWN");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/blobs/<digest> - no link to repository", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const app = createBlobRoutes();
+
+    // Setup: Create a blob but don't link it to the repository
+    const blobData = new TextEncoder().encode("test blob");
+    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    
+    await storage.putBlob(digest, createStream(blobData));
+
+    // Try to delete from a repository that doesn't have a link
+    const req = new Request(`http://localhost/myrepo/blobs/${digest}`, {
+      method: "DELETE",
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 404);
+    const body = await res.json();
+    assertEquals(body.errors[0].code, "BLOB_UNKNOWN");
+
+    // Verify blob still exists (wasn't deleted)
+    const blobExists = await storage.hasBlob(digest);
+    assertEquals(blobExists, true);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/blobs/<digest> - shared blob not deleted", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const app = createBlobRoutes();
+
+    // Setup: Create a blob and link it to multiple repositories
+    const blobData = new TextEncoder().encode("shared blob");
+    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    
+    await storage.putBlob(digest, createStream(blobData));
+    await storage.linkBlob("repo1", digest);
+    await storage.linkBlob("repo2", digest);
+
+    // Delete from one repository
+    const req = new Request(`http://localhost/repo1/blobs/${digest}`, {
+      method: "DELETE",
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 202);
+
+    // Verify the link was removed from repo1
+    const hasLink1 = await storage.hasLayerLink("repo1", digest);
+    assertEquals(hasLink1, false);
+
+    // Verify the link still exists in repo2
+    const hasLink2 = await storage.hasLayerLink("repo2", digest);
+    assertEquals(hasLink2, true);
+
+    // Verify the blob itself was NOT deleted (still referenced by repo2)
+    const blobExists = await storage.hasBlob(digest);
+    assertEquals(blobExists, true);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/blobs/<digest> - invalid digest format", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    const req = new Request(`http://localhost/myrepo/blobs/invalid-digest`, {
+      method: "DELETE",
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 400);
+    const body = await res.json();
+    assertEquals(body.errors[0].code, "DIGEST_INVALID");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/blobs/<digest> - invalid repository name", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
+    const req = new Request(`http://localhost/Invalid-Repo/blobs/${digest}`, {
+      method: "DELETE",
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 400);
+    const body = await res.json();
+    assertEquals(body.errors[0].code, "NAME_INVALID");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
