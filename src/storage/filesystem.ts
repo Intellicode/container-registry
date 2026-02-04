@@ -620,6 +620,92 @@ export class FilesystemStorage implements StorageDriver {
   }
 
   /**
+   * Count how many repositories have a link to this blob
+   * @param digest - The digest of the blob
+   * @returns Number of repositories that reference this blob
+   */
+  async countBlobReferences(digest: string): Promise<number> {
+    // Validate digest format
+    const { algorithm, hash } = this.parseDigest(digest);
+    let count = 0;
+
+    try {
+      const repositoriesPath = join(this.rootPath, "repositories");
+      
+      // Recursively scan for layer links to this blob
+      await this.scanBlobReferences(repositoriesPath, "", digest, algorithm, hash, (found) => {
+        if (found) count++;
+      });
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
+
+    return count;
+  }
+
+  /**
+   * Recursively scan for references to a specific blob
+   */
+  private async scanBlobReferences(
+    basePath: string,
+    currentPath: string,
+    digest: string,
+    algorithm: string,
+    hash: string,
+    callback: (found: boolean) => void,
+  ): Promise<void> {
+    const fullPath = currentPath ? join(basePath, currentPath) : basePath;
+
+    try {
+      for await (const entry of Deno.readDir(fullPath)) {
+        if (!entry.isDirectory) continue;
+
+        // Check if this is a _layers directory
+        if (entry.name === "_layers" && currentPath) {
+          // Check if this repository has a link to our blob
+          const layerLinkPath = join(
+            this.rootPath,
+            "repositories",
+            currentPath,
+            "_layers",
+            algorithm,
+            hash,
+            "link",
+          );
+          try {
+            const stat = await Deno.stat(layerLinkPath);
+            if (stat.isFile) {
+              callback(true);
+            }
+          } catch (error) {
+            if (!(error instanceof Deno.errors.NotFound)) {
+              throw error;
+            }
+          }
+          continue;
+        }
+
+        // Skip other metadata directories
+        if (entry.name.startsWith("_")) {
+          continue;
+        }
+
+        // Recursively scan subdirectories
+        const newPath = currentPath
+          ? `${currentPath}/${entry.name}`
+          : entry.name;
+        await this.scanBlobReferences(basePath, newPath, digest, algorithm, hash, callback);
+      }
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
+  }
+
+  /**
    * Recursively scan for repositories
    * A directory is considered a repository if it contains a _manifests directory
    */
