@@ -8,6 +8,7 @@ import { RegistryError } from "./types/errors.ts";
 import { createV2Routes } from "./routes/v2.ts";
 import { isDevelopment } from "./middleware/errors.ts";
 import { createAuthService } from "./services/auth.ts";
+import { createUploadCleanupService } from "./services/upload-cleanup.ts";
 import { getConfig } from "./config.ts";
 
 /**
@@ -29,6 +30,13 @@ export async function createApp(): Promise<Hono> {
       throw error;
     }
   }
+
+  // Initialize upload cleanup service
+  createUploadCleanupService({
+    rootDirectory: config.storage.rootDirectory,
+    uploadTimeout: config.storage.uploadTimeout,
+    cleanupInterval: config.storage.cleanupInterval,
+  });
 
   // Configure error handler
   app.onError((err, c) => {
