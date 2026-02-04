@@ -1354,3 +1354,175 @@ Deno.test("DELETE /v2/<name>/blobs/<digest> - invalid repository name", async ()
     await cleanupTestDir(testDir);
   }
 });
+
+// Story 019: Upload Session Cancellation Tests
+
+Deno.test("DELETE /v2/<name>/blobs/uploads/<uuid> - cancel upload session", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Start an upload session
+    const startReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+
+    const startRes = await app.fetch(startReq);
+    assertEquals(startRes.status, 202);
+
+    const uuid = startRes.headers.get("Docker-Upload-UUID");
+    assertEquals(typeof uuid, "string");
+
+    // Cancel the upload session
+    const cancelReq = new Request(`http://localhost/myrepo/blobs/uploads/${uuid}`, {
+      method: "DELETE",
+    });
+
+    const cancelRes = await app.fetch(cancelReq);
+    assertEquals(cancelRes.status, 204);
+
+    // Verify the upload session was removed
+    const statusReq = new Request(`http://localhost/myrepo/blobs/uploads/${uuid}`, {
+      method: "GET",
+    });
+
+    const statusRes = await app.fetch(statusReq);
+    assertEquals(statusRes.status, 404);
+    const body = await statusRes.json();
+    assertEquals(body.errors[0].code, "BLOB_UPLOAD_UNKNOWN");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/blobs/uploads/<uuid> - upload session not found", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Try to cancel non-existent upload session
+    const nonexistentUuid = "12345678-1234-4234-8234-123456789abc";
+    const cancelReq = new Request(`http://localhost/myrepo/blobs/uploads/${nonexistentUuid}`, {
+      method: "DELETE",
+    });
+
+    const cancelRes = await app.fetch(cancelReq);
+    assertEquals(cancelRes.status, 404);
+    const body = await cancelRes.json();
+    assertEquals(body.errors[0].code, "BLOB_UPLOAD_UNKNOWN");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/blobs/uploads/<uuid> - invalid UUID format", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Try to cancel with invalid UUID
+    const invalidUuid = "not-a-valid-uuid";
+    const cancelReq = new Request(`http://localhost/myrepo/blobs/uploads/${invalidUuid}`, {
+      method: "DELETE",
+    });
+
+    const cancelRes = await app.fetch(cancelReq);
+    assertEquals(cancelRes.status, 404);
+    const body = await cancelRes.json();
+    assertEquals(body.errors[0].code, "BLOB_UPLOAD_UNKNOWN");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/blobs/uploads/<uuid> - cancel after uploading data", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    // Start an upload session
+    const startReq = new Request("http://localhost/myrepo/blobs/uploads/", {
+      method: "POST",
+    });
+
+    const startRes = await app.fetch(startReq);
+    assertEquals(startRes.status, 202);
+
+    const uuid = startRes.headers.get("Docker-Upload-UUID");
+
+    // Upload some data
+    const chunk = new TextEncoder().encode("test data");
+    const patchReq = new Request(`http://localhost/myrepo/blobs/uploads/${uuid}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Range": "0-8",
+      },
+      body: chunk,
+    });
+
+    const patchRes = await app.fetch(patchReq);
+    assertEquals(patchRes.status, 202);
+
+    // Cancel the upload session
+    const cancelReq = new Request(`http://localhost/myrepo/blobs/uploads/${uuid}`, {
+      method: "DELETE",
+    });
+
+    const cancelRes = await app.fetch(cancelReq);
+    assertEquals(cancelRes.status, 204);
+
+    // Verify the upload session and data were removed
+    const statusReq = new Request(`http://localhost/myrepo/blobs/uploads/${uuid}`, {
+      method: "GET",
+    });
+
+    const statusRes = await app.fetch(statusReq);
+    assertEquals(statusRes.status, 404);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("DELETE /v2/<name>/blobs/uploads/<uuid> - invalid repository name", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const app = createBlobRoutes();
+
+    const uuid = "12345678-1234-4234-8234-123456789abc";
+    const cancelReq = new Request(`http://localhost/Invalid-Repo/blobs/uploads/${uuid}`, {
+      method: "DELETE",
+    });
+
+    const cancelRes = await app.fetch(cancelReq);
+    assertEquals(cancelRes.status, 400);
+    const body = await cancelRes.json();
+    assertEquals(body.errors[0].code, "NAME_INVALID");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});

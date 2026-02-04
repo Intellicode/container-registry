@@ -585,6 +585,39 @@ export function createBlobRoutes(): Hono {
   });
 
   /**
+   * DELETE /v2/<name>/blobs/uploads/<uuid>
+   * Cancel an upload session.
+   */
+  blobs.on("DELETE", "/:name{.+}/blobs/uploads/:uuid", async (c: Context) => {
+    const name = c.req.param("name");
+    const uuid = c.req.param("uuid");
+
+    // Validate UUID format to prevent path traversal
+    if (!isValidUUID(uuid)) {
+      return blobUploadUnknown(uuid);
+    }
+
+    // Validate repository name
+    if (!validateRepositoryName(name)) {
+      return nameInvalid(
+        name,
+        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+      );
+    }
+
+    // Check if upload session exists
+    if (!(await uploadExists(uuid, config.storage.rootDirectory))) {
+      return blobUploadUnknown(uuid);
+    }
+
+    // Remove upload session directory and data
+    await cleanupUpload(uuid, config.storage.rootDirectory);
+
+    // Return 204 No Content
+    return c.body(null, 204);
+  });
+
+  /**
    * HEAD /v2/<name>/blobs/<digest>
    * Check if a blob exists.
    */

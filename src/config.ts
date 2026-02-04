@@ -10,6 +10,8 @@ export interface ServerConfig {
 
 export interface StorageConfig {
   rootDirectory: string;
+  uploadTimeout: number; // seconds, default 1 hour
+  cleanupInterval: number; // seconds, default 5 minutes
 }
 
 export interface LogConfig {
@@ -54,6 +56,14 @@ export function loadConfig(): RegistryConfig {
     },
     storage: {
       rootDirectory: Deno.env.get("REGISTRY_STORAGE_PATH") ?? "./data",
+      uploadTimeout: parsePositiveInt(
+        Deno.env.get("REGISTRY_UPLOAD_TIMEOUT"),
+        3600, // 1 hour default
+      ),
+      cleanupInterval: parsePositiveInt(
+        Deno.env.get("REGISTRY_UPLOAD_CLEANUP_INTERVAL"),
+        300, // 5 minutes default
+      ),
     },
     log: {
       level: parseLogLevel(Deno.env.get("REGISTRY_LOG_LEVEL")),
