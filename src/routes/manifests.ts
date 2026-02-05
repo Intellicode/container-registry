@@ -198,43 +198,103 @@ function extractBlobDigests(manifest: ImageManifest | ImageIndex): string[] {
 }
 
 /**
+ * Represents an acceptable media type with its quality value.
+ */
+interface AcceptableMediaType {
+  mediaType: string;
+  quality: number;
+}
+
+/**
+ * Parse Accept header into media types with quality values.
+ * Format: type/subtype[;q=value], ...
+ * Quality values range from 0 to 1, default is 1.
+ *
+ * @param acceptHeader - The Accept header value from the request
+ * @returns Array of acceptable media types sorted by quality (highest first)
+ */
+function parseAcceptHeader(acceptHeader: string): AcceptableMediaType[] {
+  const types: AcceptableMediaType[] = [];
+
+  // Split by comma and parse each type
+  const parts = acceptHeader.split(",");
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+
+    // Split media type and parameters
+    const [mediaType, ...params] = trimmed.split(";").map((s) => s.trim());
+
+    // Extract quality value from parameters
+    let quality = 1.0;
+    for (const param of params) {
+      const [key, value] = param.split("=").map((s) => s.trim());
+      if (key === "q" && value) {
+        const parsed = parseFloat(value);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+          quality = parsed;
+        }
+      }
+    }
+
+    types.push({ mediaType, quality });
+  }
+
+  // Sort by quality (highest first)
+  types.sort((a, b) => b.quality - a.quality);
+
+  return types;
+}
+
+/**
+ * Check if a specific media type matches an Accept pattern.
+ *
+ * @param pattern - The Accept pattern (may include wildcards)
+ * @param mediaType - The specific media type to check
+ * @returns true if the media type matches the pattern
+ */
+function matchesMediaType(pattern: string, mediaType: string): boolean {
+  // Handle wildcards
+  if (pattern === "*/*") {
+    return true;
+  }
+
+  // Handle partial wildcards like "application/*"
+  if (pattern.endsWith("/*")) {
+    const prefix = pattern.slice(0, -2);
+    return mediaType.startsWith(prefix + "/");
+  }
+
+  // Exact match
+  return pattern === mediaType;
+}
+
+/**
  * Parse Accept header and check if the manifest media type is acceptable.
  * Returns true if no Accept header is present (accept anything) or if the
  * manifest's media type matches one of the accepted types.
+ * Respects quality values for prioritization.
  *
  * @param acceptHeader - The Accept header value from the request
  * @param manifestMediaType - The media type of the manifest
  * @returns true if the manifest is acceptable, false otherwise
  */
-function isAcceptable(acceptHeader: string | undefined, manifestMediaType: string): boolean {
+function isAcceptable(
+  acceptHeader: string | undefined,
+  manifestMediaType: string,
+): boolean {
   // If no Accept header, accept anything
   if (!acceptHeader) {
     return true;
   }
 
-  // Parse Accept header - format: type/subtype[;q=value], ...
-  const acceptedTypes = acceptHeader.split(",").map(type => {
-    const [mediaType] = type.trim().split(";");
-    return mediaType.trim();
-  });
+  // Parse Accept header with quality values
+  const acceptedTypes = parseAcceptHeader(acceptHeader);
 
   // Check if manifest media type matches any accepted type
+  // Already sorted by quality, so first match is the best match
   for (const acceptedType of acceptedTypes) {
-    // Handle wildcards
-    if (acceptedType === "*/*") {
-      return true;
-    }
-    
-    // Handle partial wildcards like "application/*"
-    if (acceptedType.endsWith("/*")) {
-      const prefix = acceptedType.slice(0, -2);
-      if (manifestMediaType.startsWith(prefix + "/")) {
-        return true;
-      }
-    }
-    
-    // Exact match
-    if (acceptedType === manifestMediaType) {
+    if (matchesMediaType(acceptedType.mediaType, manifestMediaType)) {
       return true;
     }
   }
