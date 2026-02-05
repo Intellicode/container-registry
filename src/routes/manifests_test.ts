@@ -993,3 +993,261 @@ Deno.test("HEAD /v2/<name>/manifests/<tag> - content negotiation rejects non-mat
     await cleanupTestDir(testDir);
   }
 });
+
+Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation with quality values", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    // Request with quality values - OCI manifest has higher priority (q=1.0 by default)
+    // than Docker manifest (q=0.9), and the stored manifest is OCI
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      headers: {
+        "Accept": `${ManifestMediaTypes.OCI_MANIFEST}, ${ManifestMediaTypes.DOCKER_MANIFEST_V2}; q=0.9`,
+      },
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation prefers highest quality match", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    // Request with Docker manifest as higher priority (q=0.9) than OCI (q=0.5)
+    // Should still return OCI manifest since that's what's stored (we don't convert)
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      headers: {
+        "Accept": `${ManifestMediaTypes.DOCKER_MANIFEST_V2}; q=0.9, ${ManifestMediaTypes.OCI_MANIFEST}; q=0.5`,
+      },
+    });
+
+    const res = await app.fetch(req);
+
+    // Should succeed with OCI manifest (matching stored type)
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation with multiple types", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    // Typical Docker client Accept header with multiple types
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      headers: {
+        "Accept": `${ManifestMediaTypes.OCI_MANIFEST}, ${ManifestMediaTypes.OCI_INDEX}, ${ManifestMediaTypes.DOCKER_MANIFEST_V2}; q=0.9, ${ManifestMediaTypes.DOCKER_MANIFEST_LIST}; q=0.9`,
+      },
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation rejects when no acceptable format", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    // Request only Docker formats, but manifest is stored as OCI
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      headers: {
+        "Accept": `${ManifestMediaTypes.DOCKER_MANIFEST_V2}, ${ManifestMediaTypes.DOCKER_MANIFEST_LIST}; q=0.9`,
+      },
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 406);
+    const body = await res.json();
+    assertEquals(body.errors[0].code, "MANIFEST_UNACCEPTABLE");
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
+
+Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation accepts application/* wildcard", async () => {
+  const testDir = await createTestDir();
+
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
+
+    const storage = new FilesystemStorage(testDir);
+    const manifest = createTestManifest();
+
+    // Pre-create the blobs and manifest
+    for (const layer of manifest.layers) {
+      const data = new TextEncoder().encode("layer data");
+      await storage.putBlob(layer.digest, createStream(data));
+    }
+    const configData = new TextEncoder().encode("config data");
+    await storage.putBlob(manifest.config.digest, createStream(configData));
+
+    const manifestJson = JSON.stringify(manifest);
+    const encoder = new TextEncoder();
+    const content = encoder.encode(manifestJson);
+
+    // Calculate digest
+    const hashBuffer = await crypto.subtle.digest("SHA-256", content);
+    const hashArray = new Uint8Array(hashBuffer);
+    const hashHex = Array.from(hashArray)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    const digest = `sha256:${hashHex}`;
+
+    await storage.putManifest("myrepo", "v1.0", content, digest);
+
+    const app = createManifestRoutes();
+
+    const req = new Request("http://localhost/myrepo/manifests/v1.0", {
+      headers: {
+        "Accept": "application/*",
+      },
+    });
+
+    const res = await app.fetch(req);
+
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
+});
