@@ -35,18 +35,21 @@ const createTestManifest = () => ({
   mediaType: ManifestMediaTypes.OCI_MANIFEST,
   config: {
     mediaType: "application/vnd.oci.image.config.v1+json",
-    digest: "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+    digest:
+      "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
     size: 7023,
   },
   layers: [
     {
       mediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
-      digest: "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      digest:
+        "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
       size: 32654,
     },
     {
       mediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
-      digest: "sha256:6dbb9cc54074106d46d4ccb330f2a40a682d49dda5f4844962b0b48f8e3e4e12",
+      digest:
+        "sha256:6dbb9cc54074106d46d4ccb330f2a40a682d49dda5f4844962b0b48f8e3e4e12",
       size: 16724,
     },
   ],
@@ -58,13 +61,15 @@ const createDockerManifest = () => ({
   mediaType: ManifestMediaTypes.DOCKER_MANIFEST_V2,
   config: {
     mediaType: "application/vnd.docker.container.image.v1+json",
-    digest: "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+    digest:
+      "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
     size: 7023,
   },
   layers: [
     {
       mediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-      digest: "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      digest:
+        "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
       size: 32654,
     },
   ],
@@ -77,7 +82,8 @@ const createTestIndex = () => ({
   manifests: [
     {
       mediaType: ManifestMediaTypes.OCI_MANIFEST,
-      digest: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      digest:
+        "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       size: 1234,
       platform: {
         architecture: "amd64",
@@ -86,7 +92,8 @@ const createTestIndex = () => ({
     },
     {
       mediaType: ManifestMediaTypes.OCI_MANIFEST,
-      digest: "sha256:38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da",
+      digest:
+        "sha256:38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da",
       size: 1235,
       platform: {
         architecture: "arm64",
@@ -362,15 +369,19 @@ Deno.test("PUT /v2/<name>/manifests/<digest> - digest mismatch", async () => {
     const manifestJson = JSON.stringify(manifest);
 
     // Use a wrong digest
-    const wrongDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    const wrongDigest =
+      "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
-    const req = new Request(`http://localhost/myrepo/manifests/${wrongDigest}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": ManifestMediaTypes.OCI_MANIFEST,
+    const req = new Request(
+      `http://localhost/myrepo/manifests/${wrongDigest}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": ManifestMediaTypes.OCI_MANIFEST,
+        },
+        body: manifestJson,
       },
-      body: manifestJson,
-    });
+    );
 
     const res = await app.fetch(req);
 
@@ -422,7 +433,10 @@ Deno.test("GET /v2/<name>/manifests/<tag> - retrieve manifest", async () => {
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+    assertEquals(
+      res.headers.get("Content-Type"),
+      ManifestMediaTypes.OCI_MANIFEST,
+    );
     assertEquals(res.headers.get("Docker-Content-Digest"), digest);
 
     const retrievedManifest = await res.json();
@@ -497,7 +511,10 @@ Deno.test("HEAD /v2/<name>/manifests/<tag> - check manifest exists", async () =>
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+    assertEquals(
+      res.headers.get("Content-Type"),
+      ManifestMediaTypes.OCI_MANIFEST,
+    );
     assertEquals(res.headers.get("Docker-Content-Digest"), digest);
     assertExists(res.headers.get("Content-Length"));
   } finally {
@@ -632,9 +649,12 @@ Deno.test("DELETE /v2/<name>/manifests/<digest> - delete manifest not found", as
     const nonexistentDigest =
       "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
-    const req = new Request(`http://localhost/myrepo/manifests/${nonexistentDigest}`, {
-      method: "DELETE",
-    });
+    const req = new Request(
+      `http://localhost/myrepo/manifests/${nonexistentDigest}`,
+      {
+        method: "DELETE",
+      },
+    );
 
     const res = await app.fetch(req);
 
@@ -784,7 +804,10 @@ Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation with matching Ac
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+    assertEquals(
+      res.headers.get("Content-Type"),
+      ManifestMediaTypes.OCI_MANIFEST,
+    );
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);
@@ -834,7 +857,10 @@ Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation with wildcard Ac
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+    assertEquals(
+      res.headers.get("Content-Type"),
+      ManifestMediaTypes.OCI_MANIFEST,
+    );
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);
@@ -936,7 +962,10 @@ Deno.test("HEAD /v2/<name>/manifests/<tag> - content negotiation with matching A
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+    assertEquals(
+      res.headers.get("Content-Type"),
+      ManifestMediaTypes.OCI_MANIFEST,
+    );
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);
@@ -1032,14 +1061,18 @@ Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation with quality val
     // than Docker manifest (q=0.9), and the stored manifest is OCI
     const req = new Request("http://localhost/myrepo/manifests/v1.0", {
       headers: {
-        "Accept": `${ManifestMediaTypes.OCI_MANIFEST}, ${ManifestMediaTypes.DOCKER_MANIFEST_V2}; q=0.9`,
+        "Accept":
+          `${ManifestMediaTypes.OCI_MANIFEST}, ${ManifestMediaTypes.DOCKER_MANIFEST_V2}; q=0.9`,
       },
     });
 
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+    assertEquals(
+      res.headers.get("Content-Type"),
+      ManifestMediaTypes.OCI_MANIFEST,
+    );
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);
@@ -1084,7 +1117,8 @@ Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation prefers highest 
     // Should still return OCI manifest since that's what's stored (we don't convert)
     const req = new Request("http://localhost/myrepo/manifests/v1.0", {
       headers: {
-        "Accept": `${ManifestMediaTypes.DOCKER_MANIFEST_V2}; q=0.9, ${ManifestMediaTypes.OCI_MANIFEST}; q=0.5`,
+        "Accept":
+          `${ManifestMediaTypes.DOCKER_MANIFEST_V2}; q=0.9, ${ManifestMediaTypes.OCI_MANIFEST}; q=0.5`,
       },
     });
 
@@ -1092,7 +1126,10 @@ Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation prefers highest 
 
     // Should succeed with OCI manifest (matching stored type)
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+    assertEquals(
+      res.headers.get("Content-Type"),
+      ManifestMediaTypes.OCI_MANIFEST,
+    );
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);
@@ -1136,14 +1173,18 @@ Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation with multiple ty
     // Typical Docker client Accept header with multiple types
     const req = new Request("http://localhost/myrepo/manifests/v1.0", {
       headers: {
-        "Accept": `${ManifestMediaTypes.OCI_MANIFEST}, ${ManifestMediaTypes.OCI_INDEX}, ${ManifestMediaTypes.DOCKER_MANIFEST_V2}; q=0.9, ${ManifestMediaTypes.DOCKER_MANIFEST_LIST}; q=0.9`,
+        "Accept":
+          `${ManifestMediaTypes.OCI_MANIFEST}, ${ManifestMediaTypes.OCI_INDEX}, ${ManifestMediaTypes.DOCKER_MANIFEST_V2}; q=0.9, ${ManifestMediaTypes.DOCKER_MANIFEST_LIST}; q=0.9`,
       },
     });
 
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+    assertEquals(
+      res.headers.get("Content-Type"),
+      ManifestMediaTypes.OCI_MANIFEST,
+    );
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);
@@ -1187,7 +1228,8 @@ Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation rejects when no 
     // Request only Docker formats, but manifest is stored as OCI
     const req = new Request("http://localhost/myrepo/manifests/v1.0", {
       headers: {
-        "Accept": `${ManifestMediaTypes.DOCKER_MANIFEST_V2}, ${ManifestMediaTypes.DOCKER_MANIFEST_LIST}; q=0.9`,
+        "Accept":
+          `${ManifestMediaTypes.DOCKER_MANIFEST_V2}, ${ManifestMediaTypes.DOCKER_MANIFEST_LIST}; q=0.9`,
       },
     });
 
@@ -1245,7 +1287,10 @@ Deno.test("GET /v2/<name>/manifests/<tag> - content negotiation accepts applicat
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Content-Type"), ManifestMediaTypes.OCI_MANIFEST);
+    assertEquals(
+      res.headers.get("Content-Type"),
+      ManifestMediaTypes.OCI_MANIFEST,
+    );
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);

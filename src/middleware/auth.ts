@@ -43,13 +43,21 @@ export function createAuthMiddleware(
       // Parse Bearer token
       const token = TokenService.parseBearerToken(authHeader);
       if (!token) {
-        return respondUnauthorized(c, authConfig, "malformed authorization header");
+        return respondUnauthorized(
+          c,
+          authConfig,
+          "malformed authorization header",
+        );
       }
 
       // Validate token
       const result = await tokenService.validateToken(token);
       if (!result.valid) {
-        return respondUnauthorized(c, authConfig, result.error || "invalid token");
+        return respondUnauthorized(
+          c,
+          authConfig,
+          result.error || "invalid token",
+        );
       }
 
       // Token is valid, store payload in context for potential use by routes
@@ -68,7 +76,11 @@ export function createAuthMiddleware(
       // Parse Basic Auth credentials
       const credentials = AuthService.parseBasicAuth(authHeader);
       if (!credentials) {
-        return respondUnauthorized(c, authConfig, "malformed authorization header");
+        return respondUnauthorized(
+          c,
+          authConfig,
+          "malformed authorization header",
+        );
       }
 
       // Validate credentials
@@ -95,9 +107,13 @@ export function createAuthMiddleware(
 /**
  * Helper to return 401 Unauthorized response with WWW-Authenticate header
  */
-function respondUnauthorized(c: Context, authConfig: AuthConfig, message: string = "authentication required") {
+function respondUnauthorized(
+  c: Context,
+  authConfig: AuthConfig,
+  message: string = "authentication required",
+) {
   const error = new RegistryError(ErrorCodes.UNAUTHORIZED, message);
-  
+
   if (authConfig.type === "token" && authConfig.token) {
     // Generate Bearer challenge with scope based on the request path
     const scope = extractScope(c);
@@ -112,7 +128,7 @@ function respondUnauthorized(c: Context, authConfig: AuthConfig, message: string
     const escapedRealm = authConfig.realm.replace(/["\\]/g, "\\$&");
     c.header("WWW-Authenticate", `Basic realm="${escapedRealm}"`);
   }
-  
+
   return c.json(error.toResponse(), 401);
 }
 
@@ -122,35 +138,35 @@ function respondUnauthorized(c: Context, authConfig: AuthConfig, message: string
  */
 function extractScope(c: Context): string | undefined {
   const path = c.req.path;
-  
+
   // Match /v2/<name>/manifests/* or /v2/<name>/blobs/*
   const manifestMatch = path.match(/^\/v2\/([^/]+)\/manifests\//);
   const blobMatch = path.match(/^\/v2\/([^/]+)\/blobs\//);
   const tagsMatch = path.match(/^\/v2\/([^/]+)\/tags\//);
-  
+
   if (manifestMatch) {
     const name = manifestMatch[1];
     const method = c.req.method;
     const action = method === "GET" || method === "HEAD" ? "pull" : "push";
     return `repository:${name}:${action}`;
   }
-  
+
   if (blobMatch) {
     const name = blobMatch[1];
     const method = c.req.method;
     const action = method === "GET" || method === "HEAD" ? "pull" : "push";
     return `repository:${name}:${action}`;
   }
-  
+
   if (tagsMatch) {
     const name = tagsMatch[1];
     return `repository:${name}:pull`;
   }
-  
+
   // Catalog endpoint
   if (path === "/v2/_catalog") {
     return "registry:catalog:*";
   }
-  
+
   return undefined;
 }

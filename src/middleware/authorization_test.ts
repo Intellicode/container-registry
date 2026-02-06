@@ -18,7 +18,7 @@ Deno.test("Authorization Middleware - disabled access control allows all", async
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/*", (c) => c.text("ok"));
 
@@ -36,7 +36,7 @@ Deno.test("Authorization Middleware - allows base endpoint without auth", async 
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/v2/", (c) => c.text("ok"));
 
@@ -54,13 +54,13 @@ Deno.test("Authorization Middleware - denies access when no permission", async (
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/*", (c) => c.text("ok"));
 
   const res = await app.request("/v2/myorg/webapp/manifests/latest");
   assertEquals(res.status, 403);
-  
+
   const body = await res.json();
   assertEquals(body.errors[0].code, "DENIED");
   assertEquals(body.errors[0].detail.repository, "myorg/webapp");
@@ -83,7 +83,7 @@ Deno.test("Authorization Middleware - allows access with basic auth", async () =
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/*", (c) => c.text("ok"));
 
@@ -111,14 +111,14 @@ Deno.test("Authorization Middleware - extracts username from JWT token payload",
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   // Simulate JWT auth middleware setting token payload
   app.use("*", async (c, next) => {
     // @ts-ignore: set token payload
     c.set("tokenPayload", { sub: "bob", iat: 123456 });
     await next();
   });
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/*", (c) => c.text("ok"));
 
@@ -142,13 +142,13 @@ Deno.test("Authorization Middleware - GET manifest requires pull permission", as
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", async (c, next) => {
     // @ts-ignore: set token payload
     c.set("tokenPayload", { sub: "alice" });
     await next();
   });
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/*", (c) => c.text("ok"));
 
@@ -172,13 +172,13 @@ Deno.test("Authorization Middleware - PUT manifest requires push permission", as
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", async (c, next) => {
     // @ts-ignore: set token payload
     c.set("tokenPayload", { sub: "alice" });
     await next();
   });
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.put("/*", (c) => c.text("ok"));
 
@@ -204,13 +204,13 @@ Deno.test("Authorization Middleware - DELETE manifest requires delete permission
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", async (c, next) => {
     // @ts-ignore: set token payload
     c.set("tokenPayload", { sub: "alice" });
     await next();
   });
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.delete("/*", (c) => c.text("ok"));
 
@@ -236,13 +236,13 @@ Deno.test("Authorization Middleware - blob operations follow same rules", async 
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", async (c, next) => {
     // @ts-ignore: set token payload
     c.set("tokenPayload", { sub: "alice" });
     await next();
   });
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/*", (c) => c.text("ok"));
 
@@ -266,13 +266,13 @@ Deno.test("Authorization Middleware - wildcard patterns work", async () => {
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", async (c, next) => {
     // @ts-ignore: set token payload
     c.set("tokenPayload", { sub: "alice" });
     await next();
   });
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/*", (c) => c.text("ok"));
 
@@ -298,13 +298,13 @@ Deno.test("Authorization Middleware - admin user bypasses checks", async () => {
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", async (c, next) => {
     // @ts-ignore: set token payload
     c.set("tokenPayload", { sub: "admin" });
     await next();
   });
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/*", (c) => c.text("ok"));
   app.put("/*", (c) => c.text("ok"));
@@ -341,13 +341,13 @@ Deno.test("Authorization Middleware - catalog endpoint uses _catalog repository"
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", async (c, next) => {
     // @ts-ignore: set token payload
     c.set("tokenPayload", { sub: "alice" });
     await next();
   });
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/v2/_catalog", (c) => c.text("ok"));
 
@@ -371,13 +371,13 @@ Deno.test("Authorization Middleware - nested repository paths work", async () =>
 
   const service = new AccessControlService(config);
   const app = new Hono();
-  
+
   app.use("*", async (c, next) => {
     // @ts-ignore: set token payload
     c.set("tokenPayload", { sub: "alice" });
     await next();
   });
-  
+
   app.use("*", createAuthorizationMiddleware(service));
   app.get("/*", (c) => c.text("ok"));
 

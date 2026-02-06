@@ -2,7 +2,12 @@
  * OCI-compliant error response utilities.
  */
 
-import { ErrorCodes, type ErrorCode, ErrorStatusCodes, type OCIErrorResponse } from "../types/errors.ts";
+import {
+  type ErrorCode,
+  ErrorCodes,
+  ErrorStatusCodes,
+  type OCIErrorResponse,
+} from "../types/errors.ts";
 
 /**
  * Creates an OCI-compliant JSON error response.
@@ -144,7 +149,9 @@ export function manifestUnknown(reference: string): Response {
 export function nameInvalid(name: string, reason?: string): Response {
   return ociError(
     ErrorCodes.NAME_INVALID,
-    reason ? `invalid repository name ${name}: ${reason}` : `invalid repository name ${name}`,
+    reason
+      ? `invalid repository name ${name}: ${reason}`
+      : `invalid repository name ${name}`,
     { name },
   );
 }
@@ -227,6 +234,9 @@ export function tooManyRequests(
  * @param detail - Optional additional details
  * @returns 406 error response
  */
-export function manifestUnacceptable(message: string, detail?: unknown): Response {
+export function manifestUnacceptable(
+  message: string,
+  detail?: unknown,
+): Response {
   return ociError(ErrorCodes.MANIFEST_UNACCEPTABLE, message, detail);
 }

@@ -6,7 +6,7 @@ Deno.test("V2 Endpoint Tests", async (t) => {
   // Store original env to restore later
   const originalAuthType = Deno.env.get("REGISTRY_AUTH_TYPE");
   const originalAuthRealm = Deno.env.get("REGISTRY_AUTH_REALM");
-  
+
   // Track cleanup services to stop them after tests
   const cleanupServices: Array<{ stop: () => void }> = [];
 
@@ -22,7 +22,7 @@ Deno.test("V2 Endpoint Tests", async (t) => {
       Deno.env.delete("REGISTRY_AUTH_REALM");
     }
     resetConfig();
-    
+
     // Stop all cleanup services
     for (const service of cleanupServices) {
       service.stop();

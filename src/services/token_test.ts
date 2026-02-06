@@ -8,7 +8,9 @@ import type { TokenAuthConfig } from "../config.ts";
 import { create } from "djwt";
 
 // Generate RSA key pair for testing
-async function generateRSAKeyPair(): Promise<{ publicKey: CryptoKey; privateKey: CryptoKey }> {
+async function generateRSAKeyPair(): Promise<
+  { publicKey: CryptoKey; privateKey: CryptoKey }
+> {
   const keyPair = await crypto.subtle.generateKey(
     {
       name: "RSASSA-PKCS1-v1_5",
@@ -28,7 +30,9 @@ async function exportPublicKeyToPEM(publicKey: CryptoKey): Promise<string> {
   const exported = await crypto.subtle.exportKey("spki", publicKey);
   const exportedAsString = String.fromCharCode(...new Uint8Array(exported));
   const exportedAsBase64 = btoa(exportedAsString);
-  const pemFormatted = `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64.match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`;
+  const pemFormatted = `-----BEGIN PUBLIC KEY-----\n${
+    exportedAsBase64.match(/.{1,64}/g)?.join("\n")
+  }\n-----END PUBLIC KEY-----`;
   return pemFormatted;
 }
 
@@ -41,18 +45,19 @@ async function writeTempPublicKey(pem: string): Promise<string> {
 }
 
 Deno.test("TokenService - parseBearerToken", () => {
-  const token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
-  
+  const token =
+    "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
+
   // Valid Bearer token
   const result = TokenService.parseBearerToken(`Bearer ${token}`);
   assertEquals(result, token);
-  
+
   // Missing Bearer prefix
   assertEquals(TokenService.parseBearerToken(token), null);
-  
+
   // Wrong prefix
   assertEquals(TokenService.parseBearerToken("Basic abc123"), null);
-  
+
   // Empty token
   assertEquals(TokenService.parseBearerToken("Bearer "), null);
   assertEquals(TokenService.parseBearerToken("Bearer"), null);
@@ -91,7 +96,11 @@ Deno.test("TokenService - validateToken with valid token", async () => {
       ],
     };
 
-    const token = await create({ alg: "RS256", typ: "JWT" }, payload, keyPair.privateKey);
+    const token = await create(
+      { alg: "RS256", typ: "JWT" },
+      payload,
+      keyPair.privateKey,
+    );
 
     // Validate the token
     const result = await service.validateToken(token);
@@ -131,7 +140,11 @@ Deno.test("TokenService - validateToken with invalid issuer", async () => {
       iat: now,
     };
 
-    const token = await create({ alg: "RS256", typ: "JWT" }, payload, keyPair.privateKey);
+    const token = await create(
+      { alg: "RS256", typ: "JWT" },
+      payload,
+      keyPair.privateKey,
+    );
 
     // Validate the token
     const result = await service.validateToken(token);
@@ -170,7 +183,11 @@ Deno.test("TokenService - validateToken with invalid audience", async () => {
       iat: now,
     };
 
-    const token = await create({ alg: "RS256", typ: "JWT" }, payload, keyPair.privateKey);
+    const token = await create(
+      { alg: "RS256", typ: "JWT" },
+      payload,
+      keyPair.privateKey,
+    );
 
     // Validate the token
     const result = await service.validateToken(token);
@@ -209,7 +226,11 @@ Deno.test("TokenService - validateToken with expired token", async () => {
       iat: now - 7200,
     };
 
-    const token = await create({ alg: "RS256", typ: "JWT" }, payload, keyPair.privateKey);
+    const token = await create(
+      { alg: "RS256", typ: "JWT" },
+      payload,
+      keyPair.privateKey,
+    );
 
     // Validate the token
     const result = await service.validateToken(token);
@@ -279,7 +300,10 @@ Deno.test("TokenService - generateChallenge", () => {
   );
 
   // Escapes quotes in realm
-  const challenge3 = TokenService.generateChallenge('realm"with"quotes', service);
+  const challenge3 = TokenService.generateChallenge(
+    'realm"with"quotes',
+    service,
+  );
   assertEquals(
     challenge3,
     'Bearer realm="realm\\"with\\"quotes",service="registry.example.com"',

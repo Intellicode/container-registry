@@ -25,10 +25,10 @@ async function createUploadSession(
 ): Promise<void> {
   const sessionPath = join(rootDir, "uploads", uuid);
   await Deno.mkdir(sessionPath, { recursive: true });
-  
+
   const startedAtPath = join(sessionPath, "startedat");
   await Deno.writeTextFile(startedAtPath, startedAt.toISOString());
-  
+
   // Create a dummy data file
   const dataPath = join(sessionPath, "data");
   await Deno.writeTextFile(dataPath, "test data");
@@ -74,7 +74,10 @@ Deno.test("UploadCleanupService - cleanup expired sessions", async () => {
     await (service as any).cleanup();
 
     // Verify expired session was removed
-    const expiredExists = await uploadSessionExists(testDir, "expired-session-1");
+    const expiredExists = await uploadSessionExists(
+      testDir,
+      "expired-session-1",
+    );
     assertEquals(expiredExists, false);
 
     // Verify active session still exists

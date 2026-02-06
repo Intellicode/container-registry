@@ -12,7 +12,7 @@ Deno.test("Basic Auth Integration Tests", async (t) => {
   // Store original env
   const originalAuthType = Deno.env.get("REGISTRY_AUTH_TYPE");
   const originalAuthHtpasswd = Deno.env.get("REGISTRY_AUTH_HTPASSWD");
-  
+
   // Track cleanup services to stop them after tests
   const cleanupServices: Array<{ stop: () => void }> = [];
 
@@ -28,7 +28,7 @@ Deno.test("Basic Auth Integration Tests", async (t) => {
       Deno.env.delete("REGISTRY_AUTH_HTPASSWD");
     }
     resetConfig();
-    
+
     // Stop all cleanup services
     for (const service of cleanupServices) {
       service.stop();

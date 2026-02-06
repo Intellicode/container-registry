@@ -16,7 +16,10 @@ import type { TokenService } from "../services/token.ts";
 /**
  * Creates the v2 API routes handler.
  */
-export function createV2Routes(authService?: AuthService, tokenService?: TokenService): Hono {
+export function createV2Routes(
+  authService?: AuthService,
+  tokenService?: TokenService,
+): Hono {
   const v2 = new Hono({ strict: false }); // Allow trailing slashes
   const config = getConfig();
 

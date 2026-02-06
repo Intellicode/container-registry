@@ -391,7 +391,10 @@ export class FilesystemStorage implements StorageDriver {
       if (this.isDigest(reference)) {
         // Reference is already a digest
         // Check if the revision link exists
-        const revisionPath = this.getManifestRevisionPath(repository, reference);
+        const revisionPath = this.getManifestRevisionPath(
+          repository,
+          reference,
+        );
         digest = await Deno.readTextFile(revisionPath);
       } else {
         // Reference is a tag, read the link to get the digest
@@ -631,11 +634,18 @@ export class FilesystemStorage implements StorageDriver {
 
     try {
       const repositoriesPath = join(this.rootPath, "repositories");
-      
+
       // Recursively scan for layer links to this blob
-      await this.scanBlobReferences(repositoriesPath, "", digest, algorithm, hash, (found) => {
-        if (found) count++;
-      });
+      await this.scanBlobReferences(
+        repositoriesPath,
+        "",
+        digest,
+        algorithm,
+        hash,
+        (found) => {
+          if (found) count++;
+        },
+      );
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -696,7 +706,14 @@ export class FilesystemStorage implements StorageDriver {
         const newPath = currentPath
           ? `${currentPath}/${entry.name}`
           : entry.name;
-        await this.scanBlobReferences(basePath, newPath, digest, algorithm, hash, callback);
+        await this.scanBlobReferences(
+          basePath,
+          newPath,
+          digest,
+          algorithm,
+          hash,
+          callback,
+        );
       }
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {

@@ -33,7 +33,9 @@ export class AuthService {
       this.parseHtpasswd(content);
     } catch (error) {
       throw new Error(
-        `Failed to load htpasswd file: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to load htpasswd file: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
     }
   }
@@ -90,7 +92,10 @@ export class AuthService {
 
     if (!hashedPassword) {
       // User not found - perform dummy compare to prevent timing attacks
-      await bcrypt.compare(password, "$2y$10$invalidhashinvalidhashinvalidhashinvalidhashinvalidhash");
+      await bcrypt.compare(
+        password,
+        "$2y$10$invalidhashinvalidhashinvalidhashinvalidhashinvalidhash",
+      );
       return false;
     }
 

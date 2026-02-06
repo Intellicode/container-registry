@@ -50,7 +50,8 @@ Deno.test("AuthService.parseBasicAuth - returns null for empty username", () => 
 
 Deno.test("AuthService.parseHtpasswd - parses valid htpasswd content", () => {
   const service = new AuthService();
-  const htpasswd = `alice:$2y$10$YixC7pXV.hOt7xLJX1VDe.pFmZJ7XBXpj5/Kt/hVqP7c8Z8Z8Z8Z8
+  const htpasswd =
+    `alice:$2y$10$YixC7pXV.hOt7xLJX1VDe.pFmZJ7XBXpj5/Kt/hVqP7c8Z8Z8Z8Z8
 bob:$2y$10$anotherhashanotherhashanotherhashanotherhashanotherhashanoth`;
 
   service.parseHtpasswd(htpasswd);
@@ -74,7 +75,8 @@ bob:$2y$10$anotherhashanotherhashanotherhashanotherhashanotherhashanoth
 
 Deno.test("AuthService.parseHtpasswd - skips malformed lines", () => {
   const service = new AuthService();
-  const htpasswd = `alice:$2y$10$YixC7pXV.hOt7xLJX1VDe.pFmZJ7XBXpj5/Kt/hVqP7c8Z8Z8Z8Z8
+  const htpasswd =
+    `alice:$2y$10$YixC7pXV.hOt7xLJX1VDe.pFmZJ7XBXpj5/Kt/hVqP7c8Z8Z8Z8Z8
 malformedline
 bob:$2y$10$anotherhashanotherhashanotherhashanotherhashanotherhashanoth`;
 
@@ -85,7 +87,8 @@ bob:$2y$10$anotherhashanotherhashanotherhashanotherhashanotherhashanoth`;
 
 Deno.test("AuthService.parseHtpasswd - skips non-bcrypt hashes", () => {
   const service = new AuthService();
-  const htpasswd = `alice:$2y$10$YixC7pXV.hOt7xLJX1VDe.pFmZJ7XBXpj5/Kt/hVqP7c8Z8Z8Z8Z8
+  const htpasswd =
+    `alice:$2y$10$YixC7pXV.hOt7xLJX1VDe.pFmZJ7XBXpj5/Kt/hVqP7c8Z8Z8Z8Z8
 bob:plaintextpassword
 charlie:$1$oldhash`;
 
@@ -97,7 +100,8 @@ charlie:$1$oldhash`;
 
 Deno.test("AuthService.parseHtpasswd - supports $2a$ and $2b$ prefixes", () => {
   const service = new AuthService();
-  const htpasswd = `alice:$2a$10$YixC7pXV.hOt7xLJX1VDe.pFmZJ7XBXpj5/Kt/hVqP7c8Z8Z8Z8Z8
+  const htpasswd =
+    `alice:$2a$10$YixC7pXV.hOt7xLJX1VDe.pFmZJ7XBXpj5/Kt/hVqP7c8Z8Z8Z8Z8
 bob:$2b$10$anotherhashanotherhashanotherhashanotherhashanotherhashanoth
 charlie:$2y$10$yetanotherhashanotherhashanotherhashanotherhashanotherhas`;
 

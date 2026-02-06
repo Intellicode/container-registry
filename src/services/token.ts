@@ -63,7 +63,9 @@ export class TokenService {
       return await this.importPublicKeyFromPem(pemContent);
     } catch (error) {
       throw new Error(
-        `Failed to load public key from ${keyPath}: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to load public key from ${keyPath}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
     }
   }
@@ -81,8 +83,9 @@ export class TokenService {
       .replace(/\s/g, "");
 
     // Decode base64
-    const binaryDer = Uint8Array.from(atob(pemContents), (c) =>
-      c.charCodeAt(0)
+    const binaryDer = Uint8Array.from(
+      atob(pemContents),
+      (c) => c.charCodeAt(0),
     );
 
     // Import as CryptoKey - try RS256 first, then ES256
@@ -125,13 +128,17 @@ export class TokenService {
 
     try {
       // Verify the token signature and extract payload
-      const payload = await verify(token, this.cryptoKey) as RegistryTokenPayload;
+      const payload = await verify(
+        token,
+        this.cryptoKey,
+      ) as RegistryTokenPayload;
 
       // Validate issuer
       if (payload.iss !== this.config.issuer) {
         return {
           valid: false,
-          error: `Invalid issuer: expected ${this.config.issuer}, got ${payload.iss}`,
+          error:
+            `Invalid issuer: expected ${this.config.issuer}, got ${payload.iss}`,
         };
       }
 
@@ -158,7 +165,9 @@ export class TokenService {
     } catch (error) {
       return {
         valid: false,
-        error: `Token verification failed: ${error instanceof Error ? error.message : String(error)}`,
+        error: `Token verification failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       };
     }
   }
@@ -232,14 +241,15 @@ export class TokenService {
   ): string {
     const escapedRealm = realm.replace(/["\\]/g, "\\$&");
     const escapedService = service.replace(/["\\]/g, "\\$&");
-    
-    let challenge = `Bearer realm="${escapedRealm}",service="${escapedService}"`;
-    
+
+    let challenge =
+      `Bearer realm="${escapedRealm}",service="${escapedService}"`;
+
     if (scope) {
       const escapedScope = scope.replace(/["\\]/g, "\\$&");
       challenge += `,scope="${escapedScope}"`;
     }
-    
+
     return challenge;
   }
 }

@@ -67,7 +67,8 @@ Deno.test({
 
       const storage = new FilesystemStorage(testDir);
       const blobData = new TextEncoder().encode("test blob content");
-      const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+      const digest =
+        "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
       await storage.putBlob(digest, createStream(blobData));
 
@@ -80,9 +81,12 @@ Deno.test({
       const res = await app.fetch(req);
 
       assertEquals(res.status, 200);
-      assertEquals(res.headers.get("Content-Length"), blobData.length.toString());
+      assertEquals(
+        res.headers.get("Content-Length"),
+        blobData.length.toString(),
+      );
       assertEquals(res.headers.get("Docker-Content-Digest"), digest);
-      
+
       // Consume and cancel the body stream to prevent file handle leak
       // Even for HEAD requests, the response might have a body stream
       if (res.body) {
@@ -103,7 +107,8 @@ Deno.test("HEAD /v2/<name>/blobs/<digest> - blob not found", async () => {
     resetConfig();
 
     const app = createBlobRoutes();
-    const digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    const digest =
+      "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
     const req = new Request("http://localhost/myrepo/blobs/" + digest, {
       method: "HEAD",
@@ -151,7 +156,8 @@ Deno.test("GET /v2/<name>/blobs/<digest> - download blob", async () => {
 
     const storage = new FilesystemStorage(testDir);
     const blobData = new TextEncoder().encode("test blob content");
-    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
     await storage.putBlob(digest, createStream(blobData));
 
@@ -184,7 +190,8 @@ Deno.test("GET /v2/<name>/blobs/<digest> - blob not found", async () => {
     resetConfig();
 
     const app = createBlobRoutes();
-    const digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    const digest =
+      "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
     const req = new Request("http://localhost/myrepo/blobs/" + digest);
 
@@ -210,8 +217,11 @@ Deno.test({
       resetConfig();
 
       const storage = new FilesystemStorage(testDir);
-      const blobData = new TextEncoder().encode("0123456789abcdefghijklmnopqrstuvwxyz");
-      const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+      const blobData = new TextEncoder().encode(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+      );
+      const digest =
+        "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
       await storage.putBlob(digest, createStream(blobData));
 
@@ -227,7 +237,10 @@ Deno.test({
 
       assertEquals(res.status, 206);
       assertEquals(res.headers.get("Content-Length"), "10");
-      assertEquals(res.headers.get("Content-Range"), `bytes 0-9/${blobData.length}`);
+      assertEquals(
+        res.headers.get("Content-Range"),
+        `bytes 0-9/${blobData.length}`,
+      );
       assertEquals(res.headers.get("Docker-Content-Digest"), digest);
 
       if (res.body) {
@@ -253,8 +266,11 @@ Deno.test({
       resetConfig();
 
       const storage = new FilesystemStorage(testDir);
-      const blobData = new TextEncoder().encode("0123456789abcdefghijklmnopqrstuvwxyz");
-      const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+      const blobData = new TextEncoder().encode(
+        "0123456789abcdefghijklmnopqrstuvwxyz",
+      );
+      const digest =
+        "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
       await storage.putBlob(digest, createStream(blobData));
 
@@ -270,8 +286,14 @@ Deno.test({
 
       assertEquals(res.status, 206);
       const expectedLength = blobData.length - 30;
-      assertEquals(res.headers.get("Content-Length"), expectedLength.toString());
-      assertEquals(res.headers.get("Content-Range"), `bytes 30-${blobData.length - 1}/${blobData.length}`);
+      assertEquals(
+        res.headers.get("Content-Length"),
+        expectedLength.toString(),
+      );
+      assertEquals(
+        res.headers.get("Content-Range"),
+        `bytes 30-${blobData.length - 1}/${blobData.length}`,
+      );
 
       if (res.body) {
         const content = await readStream(res.body);
@@ -294,7 +316,8 @@ Deno.test("GET /v2/<name>/blobs/<digest> - invalid range request", async () => {
 
     const storage = new FilesystemStorage(testDir);
     const blobData = new TextEncoder().encode("test blob content");
-    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
     await storage.putBlob(digest, createStream(blobData));
 
@@ -323,7 +346,8 @@ Deno.test("GET /v2/<name>/blobs/<digest> - invalid repository name", async () =>
     resetConfig();
 
     const app = createBlobRoutes();
-    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
     const req = new Request("http://localhost/INVALID-REPO/blobs/" + digest);
 
@@ -373,7 +397,10 @@ Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload first chunk", async ()
 
     const patchRes = await app.fetch(patchReq);
     assertEquals(patchRes.status, 202);
-    assertEquals(patchRes.headers.get("Location"), `/myrepo/blobs/uploads/${uuid}`);
+    assertEquals(
+      patchRes.headers.get("Location"),
+      `/myrepo/blobs/uploads/${uuid}`,
+    );
     assertEquals(patchRes.headers.get("Docker-Upload-UUID"), uuid);
     assertEquals(patchRes.headers.get("Range"), "0-5");
   } finally {
@@ -531,31 +558,42 @@ Deno.test("PUT /v2/<name>/blobs/uploads/<uuid> - complete chunked upload", async
 
     // Upload chunks via PATCH
     const chunk1 = new TextEncoder().encode("Hello ");
-    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
-      method: "PATCH",
-      headers: { "Content-Range": "0-5" },
-      body: createStream(chunk1),
-    }));
+    await app.fetch(
+      new Request(`http://localhost${uploadUrl}`, {
+        method: "PATCH",
+        headers: { "Content-Range": "0-5" },
+        body: createStream(chunk1),
+      }),
+    );
 
     const chunk2 = new TextEncoder().encode("World!");
-    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
-      method: "PATCH",
-      headers: { "Content-Range": "6-11" },
-      body: createStream(chunk2),
-    }));
+    await app.fetch(
+      new Request(`http://localhost${uploadUrl}`, {
+        method: "PATCH",
+        headers: { "Content-Range": "6-11" },
+        body: createStream(chunk2),
+      }),
+    );
 
     // Complete upload with PUT (no body, all data already uploaded)
     const completeData = new TextEncoder().encode("Hello World!");
-    const expectedDigest = "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
+    const expectedDigest =
+      "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
 
-    const putReq = new Request(`http://localhost${uploadUrl}?digest=${expectedDigest}`, {
-      method: "PUT",
-    });
+    const putReq = new Request(
+      `http://localhost${uploadUrl}?digest=${expectedDigest}`,
+      {
+        method: "PUT",
+      },
+    );
 
     const putRes = await app.fetch(putReq);
     assertEquals(putRes.status, 201);
     assertEquals(putRes.headers.get("Docker-Content-Digest"), expectedDigest);
-    assertEquals(putRes.headers.get("Location"), `/myrepo/blobs/${expectedDigest}`);
+    assertEquals(
+      putRes.headers.get("Location"),
+      `/myrepo/blobs/${expectedDigest}`,
+    );
 
     // Verify blob was stored correctly
     const storage = new FilesystemStorage(testDir);
@@ -588,21 +626,27 @@ Deno.test("PUT /v2/<name>/blobs/uploads/<uuid> - complete chunked upload with fi
 
     // Upload first chunk via PATCH
     const chunk1 = new TextEncoder().encode("Hello ");
-    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
-      method: "PATCH",
-      headers: { "Content-Range": "0-5" },
-      body: createStream(chunk1),
-    }));
+    await app.fetch(
+      new Request(`http://localhost${uploadUrl}`, {
+        method: "PATCH",
+        headers: { "Content-Range": "0-5" },
+        body: createStream(chunk1),
+      }),
+    );
 
     // Complete upload with PUT including final chunk
     const finalChunk = new TextEncoder().encode("World!");
     const completeData = new TextEncoder().encode("Hello World!");
-    const expectedDigest = "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
+    const expectedDigest =
+      "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
 
-    const putReq = new Request(`http://localhost${uploadUrl}?digest=${expectedDigest}`, {
-      method: "PUT",
-      body: createStream(finalChunk),
-    });
+    const putReq = new Request(
+      `http://localhost${uploadUrl}?digest=${expectedDigest}`,
+      {
+        method: "PUT",
+        body: createStream(finalChunk),
+      },
+    );
 
     const putRes = await app.fetch(putReq);
     assertEquals(putRes.status, 201);
@@ -639,18 +683,24 @@ Deno.test("PUT /v2/<name>/blobs/uploads/<uuid> - digest mismatch on chunked uplo
 
     // Upload data via PATCH
     const chunk = new TextEncoder().encode("Hello World!");
-    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
-      method: "PATCH",
-      headers: { "Content-Range": "0-11" },
-      body: createStream(chunk),
-    }));
+    await app.fetch(
+      new Request(`http://localhost${uploadUrl}`, {
+        method: "PATCH",
+        headers: { "Content-Range": "0-11" },
+        body: createStream(chunk),
+      }),
+    );
 
     // Try to complete with wrong digest
-    const wrongDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    const wrongDigest =
+      "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
-    const putReq = new Request(`http://localhost${uploadUrl}?digest=${wrongDigest}`, {
-      method: "PUT",
-    });
+    const putReq = new Request(
+      `http://localhost${uploadUrl}?digest=${wrongDigest}`,
+      {
+        method: "PUT",
+      },
+    );
 
     const putRes = await app.fetch(putReq);
     assertEquals(putRes.status, 400);
@@ -673,10 +723,13 @@ Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload session not found", as
 
     const fakeUuid = "12345678-1234-1234-1234-123456789abc";
     const chunk = new TextEncoder().encode("test");
-    const patchReq = new Request(`http://localhost/myrepo/blobs/uploads/${fakeUuid}`, {
-      method: "PATCH",
-      body: createStream(chunk),
-    });
+    const patchReq = new Request(
+      `http://localhost/myrepo/blobs/uploads/${fakeUuid}`,
+      {
+        method: "PATCH",
+        body: createStream(chunk),
+      },
+    );
 
     const patchRes = await app.fetch(patchReq);
     assertEquals(patchRes.status, 404);
@@ -716,7 +769,10 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status of empty upload", 
 
     const statusRes = await app.fetch(statusReq);
     assertEquals(statusRes.status, 204);
-    assertEquals(statusRes.headers.get("Location"), `/myrepo/blobs/uploads/${uuid}`);
+    assertEquals(
+      statusRes.headers.get("Location"),
+      `/myrepo/blobs/uploads/${uuid}`,
+    );
     assertEquals(statusRes.headers.get("Docker-Upload-UUID"), uuid);
     assertEquals(statusRes.headers.get("Range"), "0-0");
   } finally {
@@ -760,7 +816,10 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status after uploading da
 
     const statusRes = await app.fetch(statusReq);
     assertEquals(statusRes.status, 204);
-    assertEquals(statusRes.headers.get("Location"), `/myrepo/blobs/uploads/${uuid}`);
+    assertEquals(
+      statusRes.headers.get("Location"),
+      `/myrepo/blobs/uploads/${uuid}`,
+    );
     assertEquals(statusRes.headers.get("Docker-Upload-UUID"), uuid);
     assertEquals(statusRes.headers.get("Range"), "0-5");
   } finally {
@@ -788,19 +847,23 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status after multiple chu
 
     // Upload first chunk
     const chunk1 = new TextEncoder().encode("Hello ");
-    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
-      method: "PATCH",
-      headers: { "Content-Range": "0-5" },
-      body: createStream(chunk1),
-    }));
+    await app.fetch(
+      new Request(`http://localhost${uploadUrl}`, {
+        method: "PATCH",
+        headers: { "Content-Range": "0-5" },
+        body: createStream(chunk1),
+      }),
+    );
 
     // Upload second chunk
     const chunk2 = new TextEncoder().encode("World!");
-    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
-      method: "PATCH",
-      headers: { "Content-Range": "6-11" },
-      body: createStream(chunk2),
-    }));
+    await app.fetch(
+      new Request(`http://localhost${uploadUrl}`, {
+        method: "PATCH",
+        headers: { "Content-Range": "6-11" },
+        body: createStream(chunk2),
+      }),
+    );
 
     // Check upload status
     const statusReq = new Request(`http://localhost${uploadUrl}`, {
@@ -809,7 +872,10 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status after multiple chu
 
     const statusRes = await app.fetch(statusReq);
     assertEquals(statusRes.status, 204);
-    assertEquals(statusRes.headers.get("Location"), `/myrepo/blobs/uploads/${uuid}`);
+    assertEquals(
+      statusRes.headers.get("Location"),
+      `/myrepo/blobs/uploads/${uuid}`,
+    );
     assertEquals(statusRes.headers.get("Docker-Upload-UUID"), uuid);
     assertEquals(statusRes.headers.get("Range"), "0-11");
   } finally {
@@ -828,9 +894,12 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - upload session not found", asyn
     const app = createBlobRoutes();
 
     const fakeUuid = "12345678-1234-1234-1234-123456789abc";
-    const statusReq = new Request(`http://localhost/myrepo/blobs/uploads/${fakeUuid}`, {
-      method: "GET",
-    });
+    const statusReq = new Request(
+      `http://localhost/myrepo/blobs/uploads/${fakeUuid}`,
+      {
+        method: "GET",
+      },
+    );
 
     const statusRes = await app.fetch(statusReq);
     assertEquals(statusRes.status, 404);
@@ -860,11 +929,13 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - resume interrupted upload", asy
 
     // Upload first chunk
     const chunk1 = new TextEncoder().encode("Hello ");
-    await app.fetch(new Request(`http://localhost${uploadUrl}`, {
-      method: "PATCH",
-      headers: { "Content-Range": "0-5" },
-      body: createStream(chunk1),
-    }));
+    await app.fetch(
+      new Request(`http://localhost${uploadUrl}`, {
+        method: "PATCH",
+        headers: { "Content-Range": "0-5" },
+        body: createStream(chunk1),
+      }),
+    );
 
     // Simulate interruption - check status to find offset
     const statusReq = new Request(`http://localhost${uploadUrl}`, {
@@ -888,11 +959,15 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - resume interrupted upload", asy
 
     // Complete upload
     const completeData = new TextEncoder().encode("Hello World!");
-    const expectedDigest = "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
+    const expectedDigest =
+      "sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
 
-    const putReq = new Request(`http://localhost${uploadUrl}?digest=${expectedDigest}`, {
-      method: "PUT",
-    });
+    const putReq = new Request(
+      `http://localhost${uploadUrl}?digest=${expectedDigest}`,
+      {
+        method: "PUT",
+      },
+    );
     const putRes = await app.fetch(putReq);
     assertEquals(putRes.status, 201);
 
@@ -919,9 +994,12 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - invalid UUID format", async () 
     const app = createBlobRoutes();
 
     const invalidUuid = "not-a-valid-uuid";
-    const statusReq = new Request(`http://localhost/myrepo/blobs/uploads/${invalidUuid}`, {
-      method: "GET",
-    });
+    const statusReq = new Request(
+      `http://localhost/myrepo/blobs/uploads/${invalidUuid}`,
+      {
+        method: "GET",
+      },
+    );
 
     const statusRes = await app.fetch(statusReq);
     assertEquals(statusRes.status, 404);
@@ -947,8 +1025,9 @@ Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - suc
 
     // Setup: Create a blob in the source repository
     const blobData = new TextEncoder().encode("shared layer content");
-    const digest = "sha256:6ed206c5b87fa6a726971de1eb927ab7743ff101a76f65f86ce8ba0b46a1f5ea";
-    
+    const digest =
+      "sha256:6ed206c5b87fa6a726971de1eb927ab7743ff101a76f65f86ce8ba0b46a1f5ea";
+
     await storage.putBlob(digest, createStream(blobData));
     await storage.linkBlob("sourceorg/sourceimage", digest);
 
@@ -957,14 +1036,17 @@ Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - suc
       `http://localhost/targetorg/targetimage/blobs/uploads/?mount=${digest}&from=sourceorg/sourceimage`,
       {
         method: "POST",
-      }
+      },
     );
 
     const mountRes = await app.fetch(mountReq);
 
     // Should return 201 Created with blob location
     assertEquals(mountRes.status, 201);
-    assertEquals(mountRes.headers.get("Location"), `/targetorg/targetimage/blobs/${digest}`);
+    assertEquals(
+      mountRes.headers.get("Location"),
+      `/targetorg/targetimage/blobs/${digest}`,
+    );
     assertEquals(mountRes.headers.get("Docker-Content-Digest"), digest);
 
     // Verify the layer link was created in the target repository
@@ -986,12 +1068,13 @@ Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - blo
     const app = createBlobRoutes();
 
     // Attempt to mount a non-existent blob
-    const nonexistentDigest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    const nonexistentDigest =
+      "sha256:0000000000000000000000000000000000000000000000000000000000000000";
     const mountReq = new Request(
       `http://localhost/targetorg/targetimage/blobs/uploads/?mount=${nonexistentDigest}&from=sourceorg/sourceimage`,
       {
         method: "POST",
-      }
+      },
     );
 
     const mountRes = await app.fetch(mountReq);
@@ -1019,8 +1102,9 @@ Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - no 
 
     // Setup: Create a blob but don't link it to any repository
     const blobData = new TextEncoder().encode("orphan blob");
-    const digest = "sha256:c677cc5041ae478df1c116afe26230521bf6a5735bad448289025ee883000a82";
-    
+    const digest =
+      "sha256:c677cc5041ae478df1c116afe26230521bf6a5735bad448289025ee883000a82";
+
     await storage.putBlob(digest, createStream(blobData));
     // Note: Not calling linkBlob, so the blob exists but has no repository link
 
@@ -1029,7 +1113,7 @@ Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - no 
       `http://localhost/targetorg/targetimage/blobs/uploads/?mount=${digest}&from=sourceorg/sourceimage`,
       {
         method: "POST",
-      }
+      },
     );
 
     const mountRes = await app.fetch(mountReq);
@@ -1055,8 +1139,9 @@ Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - inv
 
     // Setup: Create a blob in a valid repository
     const blobData = new TextEncoder().encode("test blob");
-    const digest = "sha256:298d37cb0b7abbef2639ca7e5ff3f232678a9293146d610ac63f862e0da62b3b";
-    
+    const digest =
+      "sha256:298d37cb0b7abbef2639ca7e5ff3f232678a9293146d610ac63f862e0da62b3b";
+
     await storage.putBlob(digest, createStream(blobData));
     await storage.linkBlob("validrepo", digest);
 
@@ -1065,7 +1150,7 @@ Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - inv
       `http://localhost/targetrepo/blobs/uploads/?mount=${digest}&from=INVALID-REPO`,
       {
         method: "POST",
-      }
+      },
     );
 
     const mountRes = await app.fetch(mountReq);
@@ -1093,7 +1178,7 @@ Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - inv
       `http://localhost/targetrepo/blobs/uploads/?mount=invalid-digest&from=sourcerepo`,
       {
         method: "POST",
-      }
+      },
     );
 
     const mountRes = await app.fetch(mountReq);
@@ -1116,14 +1201,15 @@ Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest> - missing from paramete
 
     const app = createBlobRoutes();
 
-    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
-    
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
     // Mount parameter provided but from parameter missing
     const mountReq = new Request(
       `http://localhost/targetrepo/blobs/uploads/?mount=${digest}`,
       {
         method: "POST",
-      }
+      },
     );
 
     const mountRes = await app.fetch(mountReq);
@@ -1149,8 +1235,9 @@ Deno.test("POST /v2/<name>/blobs/uploads/ - mount across different repositories"
 
     // Setup: Create a blob in source repository
     const blobData = new TextEncoder().encode("namespaced layer");
-    const digest = "sha256:483e5e9e14afafa90aa67370fe53fac1ee3c6f952af857685aa495c3841ade9d";
-    
+    const digest =
+      "sha256:483e5e9e14afafa90aa67370fe53fac1ee3c6f952af857685aa495c3841ade9d";
+
     await storage.putBlob(digest, createStream(blobData));
     await storage.linkBlob("source", digest);
 
@@ -1159,7 +1246,7 @@ Deno.test("POST /v2/<name>/blobs/uploads/ - mount across different repositories"
       `http://localhost/target/blobs/uploads/?mount=${digest}&from=source`,
       {
         method: "POST",
-      }
+      },
     );
 
     const mountRes = await app.fetch(mountReq);
@@ -1190,8 +1277,9 @@ Deno.test("DELETE /v2/<name>/blobs/<digest> - successful deletion", async () => 
 
     // Setup: Create a blob and link it to a repository
     const blobData = new TextEncoder().encode("test blob for deletion");
-    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
-    
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
     await storage.putBlob(digest, createStream(blobData));
     await storage.linkBlob("myrepo", digest);
 
@@ -1225,7 +1313,8 @@ Deno.test("DELETE /v2/<name>/blobs/<digest> - blob not found", async () => {
     resetConfig();
 
     const app = createBlobRoutes();
-    const digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+    const digest =
+      "sha256:0000000000000000000000000000000000000000000000000000000000000000";
 
     const req = new Request(`http://localhost/myrepo/blobs/${digest}`, {
       method: "DELETE",
@@ -1254,8 +1343,9 @@ Deno.test("DELETE /v2/<name>/blobs/<digest> - no link to repository", async () =
 
     // Setup: Create a blob but don't link it to the repository
     const blobData = new TextEncoder().encode("test blob");
-    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
-    
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
     await storage.putBlob(digest, createStream(blobData));
 
     // Try to delete from a repository that doesn't have a link
@@ -1290,8 +1380,9 @@ Deno.test("DELETE /v2/<name>/blobs/<digest> - shared blob not deleted", async ()
 
     // Setup: Create a blob and link it to multiple repositories
     const blobData = new TextEncoder().encode("shared blob");
-    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
-    
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
     await storage.putBlob(digest, createStream(blobData));
     await storage.linkBlob("repo1", digest);
     await storage.linkBlob("repo2", digest);
@@ -1354,7 +1445,8 @@ Deno.test("DELETE /v2/<name>/blobs/<digest> - invalid repository name", async ()
     resetConfig();
 
     const app = createBlobRoutes();
-    const digest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
     const req = new Request(`http://localhost/Invalid-Repo/blobs/${digest}`, {
       method: "DELETE",
@@ -1394,17 +1486,23 @@ Deno.test("DELETE /v2/<name>/blobs/uploads/<uuid> - cancel upload session", asyn
     assertEquals(typeof uuid, "string");
 
     // Cancel the upload session
-    const cancelReq = new Request(`http://localhost/myrepo/blobs/uploads/${uuid}`, {
-      method: "DELETE",
-    });
+    const cancelReq = new Request(
+      `http://localhost/myrepo/blobs/uploads/${uuid}`,
+      {
+        method: "DELETE",
+      },
+    );
 
     const cancelRes = await app.fetch(cancelReq);
     assertEquals(cancelRes.status, 204);
 
     // Verify the upload session was removed
-    const statusReq = new Request(`http://localhost/myrepo/blobs/uploads/${uuid}`, {
-      method: "GET",
-    });
+    const statusReq = new Request(
+      `http://localhost/myrepo/blobs/uploads/${uuid}`,
+      {
+        method: "GET",
+      },
+    );
 
     const statusRes = await app.fetch(statusReq);
     assertEquals(statusRes.status, 404);
@@ -1427,9 +1525,12 @@ Deno.test("DELETE /v2/<name>/blobs/uploads/<uuid> - upload session not found", a
 
     // Try to cancel non-existent upload session
     const nonexistentUuid = "12345678-1234-4234-8234-123456789abc";
-    const cancelReq = new Request(`http://localhost/myrepo/blobs/uploads/${nonexistentUuid}`, {
-      method: "DELETE",
-    });
+    const cancelReq = new Request(
+      `http://localhost/myrepo/blobs/uploads/${nonexistentUuid}`,
+      {
+        method: "DELETE",
+      },
+    );
 
     const cancelRes = await app.fetch(cancelReq);
     assertEquals(cancelRes.status, 404);
@@ -1452,9 +1553,12 @@ Deno.test("DELETE /v2/<name>/blobs/uploads/<uuid> - invalid UUID format", async 
 
     // Try to cancel with invalid UUID
     const invalidUuid = "not-a-valid-uuid";
-    const cancelReq = new Request(`http://localhost/myrepo/blobs/uploads/${invalidUuid}`, {
-      method: "DELETE",
-    });
+    const cancelReq = new Request(
+      `http://localhost/myrepo/blobs/uploads/${invalidUuid}`,
+      {
+        method: "DELETE",
+      },
+    );
 
     const cancelRes = await app.fetch(cancelReq);
     assertEquals(cancelRes.status, 404);
@@ -1487,29 +1591,38 @@ Deno.test("DELETE /v2/<name>/blobs/uploads/<uuid> - cancel after uploading data"
 
     // Upload some data
     const chunk = new TextEncoder().encode("test data");
-    const patchReq = new Request(`http://localhost/myrepo/blobs/uploads/${uuid}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Range": "0-8",
+    const patchReq = new Request(
+      `http://localhost/myrepo/blobs/uploads/${uuid}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Range": "0-8",
+        },
+        body: chunk,
       },
-      body: chunk,
-    });
+    );
 
     const patchRes = await app.fetch(patchReq);
     assertEquals(patchRes.status, 202);
 
     // Cancel the upload session
-    const cancelReq = new Request(`http://localhost/myrepo/blobs/uploads/${uuid}`, {
-      method: "DELETE",
-    });
+    const cancelReq = new Request(
+      `http://localhost/myrepo/blobs/uploads/${uuid}`,
+      {
+        method: "DELETE",
+      },
+    );
 
     const cancelRes = await app.fetch(cancelReq);
     assertEquals(cancelRes.status, 204);
 
     // Verify the upload session and data were removed
-    const statusReq = new Request(`http://localhost/myrepo/blobs/uploads/${uuid}`, {
-      method: "GET",
-    });
+    const statusReq = new Request(
+      `http://localhost/myrepo/blobs/uploads/${uuid}`,
+      {
+        method: "GET",
+      },
+    );
 
     const statusRes = await app.fetch(statusReq);
     assertEquals(statusRes.status, 404);
@@ -1529,9 +1642,12 @@ Deno.test("DELETE /v2/<name>/blobs/uploads/<uuid> - invalid repository name", as
     const app = createBlobRoutes();
 
     const uuid = "12345678-1234-4234-8234-123456789abc";
-    const cancelReq = new Request(`http://localhost/Invalid-Repo/blobs/uploads/${uuid}`, {
-      method: "DELETE",
-    });
+    const cancelReq = new Request(
+      `http://localhost/Invalid-Repo/blobs/uploads/${uuid}`,
+      {
+        method: "DELETE",
+      },
+    );
 
     const cancelRes = await app.fetch(cancelReq);
     assertEquals(cancelRes.status, 400);

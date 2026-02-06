@@ -83,12 +83,14 @@ export class UploadCleanupService {
 
       for (const session of sessions) {
         const age = now.getTime() - session.startedAt.getTime();
-        
+
         if (age > timeoutMs) {
           try {
             await Deno.remove(session.path, { recursive: true });
             console.log(
-              `Cleaned expired upload session: ${session.uuid} (age: ${Math.floor(age / 1000)}s)`,
+              `Cleaned expired upload session: ${session.uuid} (age: ${
+                Math.floor(age / 1000)
+              }s)`,
             );
             cleanedCount++;
           } catch (error) {
@@ -101,7 +103,9 @@ export class UploadCleanupService {
       }
 
       if (cleanedCount > 0) {
-        console.log(`Upload cleanup completed: ${cleanedCount} sessions removed`);
+        console.log(
+          `Upload cleanup completed: ${cleanedCount} sessions removed`,
+        );
       }
     } catch (error) {
       console.error("Error during upload cleanup:", error);

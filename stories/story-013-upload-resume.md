@@ -28,11 +28,13 @@ been received and resume from that point.
   1. GET status to find current offset
   2. PATCH with remaining data starting at offset
   3. PUT to complete
-- [x] Upload session persists across server restarts (upload data stored in filesystem)
+- [x] Upload session persists across server restarts (upload data stored in
+      filesystem)
 - [x] Hash state is saved incrementally for resume:
   - Upload data stored in `data/uploads/<uuid>/data`
   - Hash is computed on final PUT by reading the stored data
-  - Note: Web Crypto API doesn't support hash state serialization, so we recompute on completion
+  - Note: Web Crypto API doesn't support hash state serialization, so we
+    recompute on completion
 
 ## Technical Notes
 

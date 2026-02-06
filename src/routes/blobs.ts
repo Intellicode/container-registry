@@ -8,7 +8,11 @@ import { Hono } from "hono";
 import { ensureDir } from "@std/fs";
 import { join, resolve } from "@std/path";
 import { FilesystemStorage } from "../storage/filesystem.ts";
-import { createDigestStream, isValidDigest, parseDigest } from "../services/digest.ts";
+import {
+  createDigestStream,
+  isValidDigest,
+  parseDigest,
+} from "../services/digest.ts";
 import { getConfig } from "../config.ts";
 import {
   blobUnknown,
@@ -54,7 +58,8 @@ function validateRepositoryName(name: string): boolean {
  */
 function isValidUUID(uuid: string): boolean {
   // UUID v4 format: 8-4-4-4-12 hex digits
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    .test(uuid);
 }
 
 /**
@@ -65,25 +70,31 @@ function getUploadPath(uuid: string, rootDirectory: string): string {
   if (!isValidUUID(uuid)) {
     throw new Error(`Invalid UUID format: ${uuid}`);
   }
-  
+
   const uploadsDir = join(rootDirectory, "uploads");
   const uploadPath = join(uploadsDir, uuid);
-  
+
   // Ensure resolved path is within uploads directory
   const resolvedPath = resolve(uploadPath);
   const resolvedUploadsDir = resolve(uploadsDir);
-  
-  if (!resolvedPath.startsWith(resolvedUploadsDir + "/") && resolvedPath !== resolvedUploadsDir) {
+
+  if (
+    !resolvedPath.startsWith(resolvedUploadsDir + "/") &&
+    resolvedPath !== resolvedUploadsDir
+  ) {
     throw new Error(`Path traversal detected: ${uuid}`);
   }
-  
+
   return uploadPath;
 }
 
 /**
  * Check if an upload session exists.
  */
-async function uploadExists(uuid: string, rootDirectory: string): Promise<boolean> {
+async function uploadExists(
+  uuid: string,
+  rootDirectory: string,
+): Promise<boolean> {
   try {
     const path = getUploadPath(uuid, rootDirectory);
     const stat = await Deno.stat(path);
@@ -99,7 +110,10 @@ async function uploadExists(uuid: string, rootDirectory: string): Promise<boolea
 /**
  * Cleanup an upload session directory.
  */
-async function cleanupUpload(uuid: string, rootDirectory: string): Promise<void> {
+async function cleanupUpload(
+  uuid: string,
+  rootDirectory: string,
+): Promise<void> {
   try {
     const uploadPath = getUploadPath(uuid, rootDirectory);
     await Deno.remove(uploadPath, { recursive: true });
@@ -127,7 +141,10 @@ function getUploadStartedAtPath(uuid: string, rootDirectory: string): string {
 /**
  * Get current upload size by checking data file size.
  */
-async function getUploadSize(uuid: string, rootDirectory: string): Promise<number> {
+async function getUploadSize(
+  uuid: string,
+  rootDirectory: string,
+): Promise<number> {
   try {
     const dataPath = getUploadDataPath(uuid, rootDirectory);
     const stat = await Deno.stat(dataPath);
@@ -144,14 +161,16 @@ async function getUploadSize(uuid: string, rootDirectory: string): Promise<numbe
  * Parse Content-Range header.
  * Formats: "0-1023", "bytes 0-1023", "0-1023/2048"
  */
-function parseContentRange(rangeHeader: string | undefined): { start: number; end: number } | null {
+function parseContentRange(
+  rangeHeader: string | undefined,
+): { start: number; end: number } | null {
   if (!rangeHeader) {
     return null;
   }
 
   // Remove "bytes " prefix if present
   let range = rangeHeader.replace(/^bytes\s+/i, "");
-  
+
   // Remove total size if present (e.g., "0-1023/2048" -> "0-1023")
   range = range.split("/")[0];
 
@@ -179,7 +198,7 @@ async function appendUploadChunk(
   chunk: ReadableStream<Uint8Array>,
 ): Promise<void> {
   const dataPath = getUploadDataPath(uuid, rootDirectory);
-  
+
   // Open file for appending
   const file = await Deno.open(dataPath, {
     write: true,
@@ -203,19 +222,19 @@ async function appendUploadChunk(
  * Creates the blob upload routes handler.
  */
 export function createBlobRoutes(): Hono {
-  const blobs = new Hono();
+  const blobs = new Hono({ strict: false });
   const config = getConfig();
   const storage = new FilesystemStorage(config.storage.rootDirectory);
 
   /**
    * POST /v2/<name>/blobs/uploads/
    * Initiates a blob upload session or mounts an existing blob from another repository.
-   * 
+   *
    * Query parameters:
    * - mount: digest to mount from another repository
    * - from: source repository name
    */
-  blobs.post("/:name{.+}/blobs/uploads/", async (c: Context) => {
+  blobs.post("/:name{.+}/blobs/uploads", async (c: Context) => {
     const name = c.req.param("name");
     const mountDigest = c.req.query("mount");
     const fromRepository = c.req.query("from");
@@ -237,25 +256,28 @@ export function createBlobRoutes(): Hono {
       } else if (isValidDigest(mountDigest)) {
         // Check if blob exists in storage
         const blobExists = await storage.hasBlob(mountDigest);
-        
+
         // Check if source repository has a link to this blob
-        const hasSourceLink = await storage.hasLayerLink(fromRepository, mountDigest);
-        
+        const hasSourceLink = await storage.hasLayerLink(
+          fromRepository,
+          mountDigest,
+        );
+
         if (blobExists && hasSourceLink) {
           // Mount successful: create link in target repository
           await storage.linkBlob(name, mountDigest);
-          
+
           // Build blob location URL
-          const blobUrl = `/${name}/blobs/${mountDigest}`;
-          
+          const blobUrl = `/v2/${name}/blobs/${mountDigest}`;
+
           // Return 201 Created with blob location
           c.header("Location", blobUrl);
           c.header("Docker-Content-Digest", mountDigest);
-          
+
           return c.body(null, 201);
         }
       }
-      
+
       // If mount fails (blob doesn't exist, no access, or invalid digest),
       // fall back to normal upload initiation
     }
@@ -269,11 +291,14 @@ export function createBlobRoutes(): Hono {
     await ensureDir(uploadPath);
 
     // Create startedat file with current timestamp
-    const startedAtPath = getUploadStartedAtPath(uuid, config.storage.rootDirectory);
+    const startedAtPath = getUploadStartedAtPath(
+      uuid,
+      config.storage.rootDirectory,
+    );
     await Deno.writeTextFile(startedAtPath, new Date().toISOString());
 
-    // Build upload URL (no /v2 prefix since routes are mounted under v2 router)
-    const uploadUrl = `/${name}/blobs/uploads/${uuid}`;
+    // Build upload URL
+    const uploadUrl = `/v2/${name}/blobs/uploads/${uuid}`;
 
     // Return 202 Accepted with upload session details
     c.header("Location", uploadUrl);
@@ -312,13 +337,13 @@ export function createBlobRoutes(): Hono {
     // Get current upload size
     const currentSize = await getUploadSize(uuid, config.storage.rootDirectory);
 
-    // Build upload URL (no /v2 prefix since routes are mounted under v2 router)
-    const uploadUrl = `/${name}/blobs/uploads/${uuid}`;
+    // Build upload URL
+    const uploadUrl = `/v2/${name}/blobs/uploads/${uuid}`;
 
     // Return 204 No Content with upload status
     c.header("Location", uploadUrl);
     c.header("Docker-Upload-UUID", uuid);
-    
+
     // Range header format: "0-<offset>" where offset is the last byte received
     // If no data has been uploaded yet, return "0-0"
     if (currentSize > 0) {
@@ -380,7 +405,8 @@ export function createBlobRoutes(): Hono {
           errors: [{
             code: "RANGE_NOT_SATISFIABLE",
             message: "range not contiguous with existing data",
-            detail: `expected range to start at ${currentSize}, got ${range.start}`,
+            detail:
+              `expected range to start at ${currentSize}, got ${range.start}`,
           }],
         }, 416);
       }
@@ -404,8 +430,8 @@ export function createBlobRoutes(): Hono {
       // Get new upload size
       const newSize = await getUploadSize(uuid, config.storage.rootDirectory);
 
-      // Build upload URL (no /v2 prefix since routes are mounted under v2 router)
-      const uploadUrl = `/${name}/blobs/uploads/${uuid}`;
+      // Build upload URL
+      const uploadUrl = `/v2/${name}/blobs/uploads/${uuid}`;
 
       // Return 202 Accepted with updated range
       c.header("Location", uploadUrl);
@@ -458,7 +484,10 @@ export function createBlobRoutes(): Hono {
     const body = c.req.raw.body;
 
     // Check if there's existing upload data from PATCH requests
-    const existingSize = await getUploadSize(uuid, config.storage.rootDirectory);
+    const existingSize = await getUploadSize(
+      uuid,
+      config.storage.rootDirectory,
+    );
     const hasExistingData = existingSize > 0;
 
     try {
@@ -476,7 +505,7 @@ export function createBlobRoutes(): Hono {
         // Need to combine existing data file with incoming body
         const dataPath = getUploadDataPath(uuid, config.storage.rootDirectory);
         const existingFile = await Deno.open(dataPath, { read: true });
-        
+
         // Create a stream that reads existing data first, then the body
         finalStream = new ReadableStream({
           async start(controller) {
@@ -505,7 +534,7 @@ export function createBlobRoutes(): Hono {
                 bodyReader.releaseLock();
               }
             }
-            
+
             controller.close();
           },
         });
@@ -530,9 +559,10 @@ export function createBlobRoutes(): Hono {
       // 3. Stream to final storage location
       // This reduces memory pressure by avoiding buffering the entire blob,
       // and eliminates redundant disk I/O from re-reading the uploaded file.
-      const { stream: digestStream, digest: digestPromise } = createDigestStream(
-        parsedDigest.algorithm,
-      );
+      const { stream: digestStream, digest: digestPromise } =
+        createDigestStream(
+          parsedDigest.algorithm,
+        );
 
       // Create a three-way tee to process the stream in parallel
       // Branch 1: Digest calculation
@@ -569,8 +599,8 @@ export function createBlobRoutes(): Hono {
       // Clean up upload session
       await cleanupUpload(uuid, config.storage.rootDirectory);
 
-      // Build blob location URL (no /v2 prefix since routes are mounted under v2 router)
-      const blobUrl = `/${name}/blobs/${digest}`;
+      // Build blob location URL
+      const blobUrl = `/v2/${name}/blobs/${digest}`;
 
       // Return 201 Created
       c.header("Location", blobUrl);
@@ -711,11 +741,11 @@ export function createBlobRoutes(): Hono {
 
         // Create a range stream by skipping to offset and limiting bytes
         const contentLength = end - start + 1;
-        
+
         // Read and discard bytes until start position
         let bytesRead = 0;
         const reader = stream.getReader();
-        
+
         // Skip to start position
         while (bytesRead < start) {
           const { done, value } = await reader.read();
@@ -726,31 +756,37 @@ export function createBlobRoutes(): Hono {
           }
           const toSkip = Math.min(value.length, start - bytesRead);
           bytesRead += toSkip;
-          
+
           // If we haven't skipped the entire chunk, we need to handle partial chunk
           if (toSkip < value.length) {
             // Create a new stream with the remaining data from this chunk
             const partialChunk = value.slice(toSkip);
             let remainingBytes = contentLength;
             let lockReleased = false;
-            
+
             const rangeStream = new ReadableStream({
               async start(controller) {
                 try {
                   // Enqueue the partial chunk first
                   if (remainingBytes > 0) {
-                    const toEnqueue = partialChunk.slice(0, Math.min(partialChunk.length, remainingBytes));
+                    const toEnqueue = partialChunk.slice(
+                      0,
+                      Math.min(partialChunk.length, remainingBytes),
+                    );
                     controller.enqueue(toEnqueue);
                     remainingBytes -= toEnqueue.length;
                   }
-                  
+
                   // Continue reading from the original stream
                   while (remainingBytes > 0) {
                     const { done, value } = await reader.read();
                     if (done) {
                       break;
                     }
-                    const toEnqueue = value.slice(0, Math.min(value.length, remainingBytes));
+                    const toEnqueue = value.slice(
+                      0,
+                      Math.min(value.length, remainingBytes),
+                    );
                     controller.enqueue(toEnqueue);
                     remainingBytes -= toEnqueue.length;
                   }
@@ -772,7 +808,7 @@ export function createBlobRoutes(): Hono {
                 await stream.cancel();
               },
             });
-            
+
             c.header("Content-Length", contentLength.toString());
             c.header("Content-Range", `bytes ${start}-${end}/${size}`);
             c.header("Content-Type", "application/octet-stream");
@@ -780,11 +816,11 @@ export function createBlobRoutes(): Hono {
             return c.body(rangeStream, 206);
           }
         }
-        
+
         // Create limited stream for the range
         let remainingBytes = contentLength;
         let lockReleased = false;
-        
+
         const rangeStream = new ReadableStream({
           async start(controller) {
             try {
@@ -793,7 +829,10 @@ export function createBlobRoutes(): Hono {
                 if (done) {
                   break;
                 }
-                const toEnqueue = value.slice(0, Math.min(value.length, remainingBytes));
+                const toEnqueue = value.slice(
+                  0,
+                  Math.min(value.length, remainingBytes),
+                );
                 controller.enqueue(toEnqueue);
                 remainingBytes -= toEnqueue.length;
               }

@@ -9,7 +9,9 @@ import { createApp } from "../src/app.ts";
 import { resetConfig } from "../src/config.ts";
 
 // Generate RSA key pair for testing
-async function generateRSAKeyPair(): Promise<{ publicKey: CryptoKey; privateKey: CryptoKey }> {
+async function generateRSAKeyPair(): Promise<
+  { publicKey: CryptoKey; privateKey: CryptoKey }
+> {
   const keyPair = await crypto.subtle.generateKey(
     {
       name: "RSASSA-PKCS1-v1_5",
@@ -28,7 +30,9 @@ async function exportPublicKeyToPEM(publicKey: CryptoKey): Promise<string> {
   const exported = await crypto.subtle.exportKey("spki", publicKey);
   const exportedAsString = String.fromCharCode(...new Uint8Array(exported));
   const exportedAsBase64 = btoa(exportedAsString);
-  const pemFormatted = `-----BEGIN PUBLIC KEY-----\n${exportedAsBase64.match(/.{1,64}/g)?.join("\n")}\n-----END PUBLIC KEY-----`;
+  const pemFormatted = `-----BEGIN PUBLIC KEY-----\n${
+    exportedAsBase64.match(/.{1,64}/g)?.join("\n")
+  }\n-----END PUBLIC KEY-----`;
   return pemFormatted;
 }
 
@@ -39,7 +43,7 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
   const originalTokenService = Deno.env.get("REGISTRY_AUTH_TOKEN_SERVICE");
   const originalTokenIssuer = Deno.env.get("REGISTRY_AUTH_TOKEN_ISSUER");
   const originalTokenPublicKey = Deno.env.get("REGISTRY_AUTH_TOKEN_PUBLICKEY");
-  
+
   // Track cleanup services to stop them after tests
   const cleanupServices: Array<{ stop: () => void }> = [];
 
@@ -70,7 +74,7 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
       Deno.env.delete("REGISTRY_AUTH_TOKEN_PUBLICKEY");
     }
     resetConfig();
-    
+
     // Stop all cleanup services
     for (const service of cleanupServices) {
       service.stop();
@@ -88,7 +92,10 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
 
         try {
           Deno.env.set("REGISTRY_AUTH_TYPE", "token");
-          Deno.env.set("REGISTRY_AUTH_TOKEN_REALM", "https://auth.example.com/token");
+          Deno.env.set(
+            "REGISTRY_AUTH_TOKEN_REALM",
+            "https://auth.example.com/token",
+          );
           Deno.env.set("REGISTRY_AUTH_TOKEN_SERVICE", "registry.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_ISSUER", "auth.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_PUBLICKEY", tempKeyFile);
@@ -101,10 +108,15 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
           assertEquals(response.status, 401);
           const wwwAuth = response.headers.get("WWW-Authenticate");
           assertEquals(
-            wwwAuth?.startsWith('Bearer realm="https://auth.example.com/token"'),
+            wwwAuth?.startsWith(
+              'Bearer realm="https://auth.example.com/token"',
+            ),
             true,
           );
-          assertEquals(wwwAuth?.includes('service="registry.example.com"'), true);
+          assertEquals(
+            wwwAuth?.includes('service="registry.example.com"'),
+            true,
+          );
 
           const body = await response.json();
           assertEquals(body.errors[0].code, "UNAUTHORIZED");
@@ -124,7 +136,10 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
 
         try {
           Deno.env.set("REGISTRY_AUTH_TYPE", "token");
-          Deno.env.set("REGISTRY_AUTH_TOKEN_REALM", "https://auth.example.com/token");
+          Deno.env.set(
+            "REGISTRY_AUTH_TOKEN_REALM",
+            "https://auth.example.com/token",
+          );
           Deno.env.set("REGISTRY_AUTH_TOKEN_SERVICE", "registry.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_ISSUER", "auth.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_PUBLICKEY", tempKeyFile);
@@ -147,7 +162,11 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
             ],
           };
 
-          const token = await create({ alg: "RS256", typ: "JWT" }, payload, keyPair.privateKey);
+          const token = await create(
+            { alg: "RS256", typ: "JWT" },
+            payload,
+            keyPair.privateKey,
+          );
 
           const { app, cleanup } = await createApp();
           cleanupServices.push(cleanup);
@@ -174,7 +193,10 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
 
         try {
           Deno.env.set("REGISTRY_AUTH_TYPE", "token");
-          Deno.env.set("REGISTRY_AUTH_TOKEN_REALM", "https://auth.example.com/token");
+          Deno.env.set(
+            "REGISTRY_AUTH_TOKEN_REALM",
+            "https://auth.example.com/token",
+          );
           Deno.env.set("REGISTRY_AUTH_TOKEN_SERVICE", "registry.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_ISSUER", "auth.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_PUBLICKEY", tempKeyFile);
@@ -190,7 +212,11 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
             iat: now,
           };
 
-          const token = await create({ alg: "RS256", typ: "JWT" }, payload, keyPair.privateKey);
+          const token = await create(
+            { alg: "RS256", typ: "JWT" },
+            payload,
+            keyPair.privateKey,
+          );
 
           const { app, cleanup } = await createApp();
           cleanupServices.push(cleanup);
@@ -220,7 +246,10 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
 
         try {
           Deno.env.set("REGISTRY_AUTH_TYPE", "token");
-          Deno.env.set("REGISTRY_AUTH_TOKEN_REALM", "https://auth.example.com/token");
+          Deno.env.set(
+            "REGISTRY_AUTH_TOKEN_REALM",
+            "https://auth.example.com/token",
+          );
           Deno.env.set("REGISTRY_AUTH_TOKEN_SERVICE", "registry.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_ISSUER", "auth.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_PUBLICKEY", tempKeyFile);
@@ -236,7 +265,11 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
             iat: now - 7200,
           };
 
-          const token = await create({ alg: "RS256", typ: "JWT" }, payload, keyPair.privateKey);
+          const token = await create(
+            { alg: "RS256", typ: "JWT" },
+            payload,
+            keyPair.privateKey,
+          );
 
           const { app, cleanup } = await createApp();
           cleanupServices.push(cleanup);
@@ -266,7 +299,10 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
 
         try {
           Deno.env.set("REGISTRY_AUTH_TYPE", "token");
-          Deno.env.set("REGISTRY_AUTH_TOKEN_REALM", "https://auth.example.com/token");
+          Deno.env.set(
+            "REGISTRY_AUTH_TOKEN_REALM",
+            "https://auth.example.com/token",
+          );
           Deno.env.set("REGISTRY_AUTH_TOKEN_SERVICE", "registry.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_ISSUER", "auth.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_PUBLICKEY", tempKeyFile);
@@ -274,13 +310,16 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
 
           const { app, cleanup } = await createApp();
           cleanupServices.push(cleanup);
-          
+
           // Test manifest endpoint (pull)
           const response = await app.request("/v2/myimage/manifests/latest");
           assertEquals(response.status, 401);
-          
+
           const wwwAuth = response.headers.get("WWW-Authenticate");
-          assertEquals(wwwAuth?.includes('scope="repository:myimage:pull"'), true);
+          assertEquals(
+            wwwAuth?.includes('scope="repository:myimage:pull"'),
+            true,
+          );
         } finally {
           await Deno.remove(tempKeyFile);
         }
@@ -297,7 +336,10 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
 
         try {
           Deno.env.set("REGISTRY_AUTH_TYPE", "token");
-          Deno.env.set("REGISTRY_AUTH_TOKEN_REALM", "https://auth.example.com/token");
+          Deno.env.set(
+            "REGISTRY_AUTH_TOKEN_REALM",
+            "https://auth.example.com/token",
+          );
           Deno.env.set("REGISTRY_AUTH_TOKEN_SERVICE", "registry.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_ISSUER", "auth.example.com");
           Deno.env.set("REGISTRY_AUTH_TOKEN_PUBLICKEY", tempKeyFile);
@@ -333,7 +375,11 @@ Deno.test("JWT Token Auth Integration Tests", async (t) => {
             iat: now,
           };
 
-          const token = await create({ alg: "RS256", typ: "JWT" }, payload, keyPair.privateKey);
+          const token = await create(
+            { alg: "RS256", typ: "JWT" },
+            payload,
+            keyPair.privateKey,
+          );
 
           const authedResponse = await app.request("/v2/", {
             headers: { Authorization: `Bearer ${token}` },

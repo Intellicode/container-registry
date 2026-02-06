@@ -18,7 +18,9 @@ import { getConfig } from "./config.ts";
  * Creates and configures the Hono application.
  * Returns both the app and the cleanup service so it can be stopped in tests.
  */
-export async function createApp(): Promise<{ app: Hono; cleanup: ReturnType<typeof createUploadCleanupService> }> {
+export async function createApp(): Promise<
+  { app: Hono; cleanup: ReturnType<typeof createUploadCleanupService> }
+> {
   // Set strict: false to allow both /v2 and /v2/ to work
   const app = new Hono({ strict: false });
 
@@ -26,11 +28,13 @@ export async function createApp(): Promise<{ app: Hono; cleanup: ReturnType<type
   const config = getConfig();
   let authService;
   let tokenService;
-  
+
   if (config.auth.type === "basic" && config.auth.htpasswd) {
     try {
       authService = await createAuthService(config.auth.htpasswd);
-      console.log(`Loaded ${authService.getCredentialCount()} users from htpasswd file`);
+      console.log(
+        `Loaded ${authService.getCredentialCount()} users from htpasswd file`,
+      );
     } catch (error) {
       console.error(`Failed to initialize auth service: ${error}`);
       throw error;
@@ -38,7 +42,9 @@ export async function createApp(): Promise<{ app: Hono; cleanup: ReturnType<type
   } else if (config.auth.type === "token" && config.auth.token) {
     try {
       tokenService = await createTokenService(config.auth.token);
-      console.log(`Token service initialized with issuer: ${config.auth.token.issuer}`);
+      console.log(
+        `Token service initialized with issuer: ${config.auth.token.issuer}`,
+      );
     } catch (error) {
       console.error(`Failed to initialize token service: ${error}`);
       throw error;
@@ -48,9 +54,13 @@ export async function createApp(): Promise<{ app: Hono; cleanup: ReturnType<type
   // Initialize access control service
   const accessControlService = createAccessControlService(config.access);
   if (accessControlService.isEnabled()) {
-    console.log(`Access control enabled with ${config.access.rules.length} rules`);
+    console.log(
+      `Access control enabled with ${config.access.rules.length} rules`,
+    );
     console.log(`Default policy: ${config.access.defaultPolicy}`);
-    console.log(`Admin users: ${config.access.adminUsers.join(", ") || "none"}`);
+    console.log(
+      `Admin users: ${config.access.adminUsers.join(", ") || "none"}`,
+    );
   }
 
   // Initialize upload cleanup service
@@ -66,7 +76,10 @@ export async function createApp(): Promise<{ app: Hono; cleanup: ReturnType<type
 
     // Handle known registry errors
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
+      return c.json(
+        err.toResponse(),
+        err.statusCode as 400 | 401 | 403 | 404 | 415 | 429,
+      );
     }
 
     // Handle unexpected errors - return plain 500 error

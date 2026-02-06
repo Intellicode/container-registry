@@ -457,7 +457,7 @@ Deno.test("FilesystemStorage - manifest operations", async (t) => {
       // Both tag and digest should no longer resolve
       const tagResult = await storage.getManifest(repository, tag);
       assertEquals(tagResult, null);
-      
+
       const digestResult = await storage.getManifest(repository, digest);
       assertEquals(digestResult, null);
     });
@@ -465,7 +465,8 @@ Deno.test("FilesystemStorage - manifest operations", async (t) => {
     await t.step(
       "deleteManifest returns false for non-existent manifest",
       async () => {
-        const digest = "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+        const digest =
+          "sha256:0000000000000000000000000000000000000000000000000000000000000000";
         const deleted = await storage.deleteManifest(
           "myorg/myimage",
           digest,

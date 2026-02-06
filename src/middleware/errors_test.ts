@@ -9,14 +9,17 @@ import { ErrorCodes, RegistryError } from "../types/errors.ts";
 
 Deno.test("onError handler - catches and formats RegistryError", async () => {
   const app = new Hono();
-  
+
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
+      return c.json(
+        err.toResponse(),
+        err.statusCode as 400 | 401 | 403 | 404 | 415 | 429,
+      );
     }
     return c.json({ error: "internal server error" }, 500);
   });
-  
+
   app.get("/test", () => {
     throw new RegistryError(
       ErrorCodes.BLOB_UNKNOWN,
@@ -46,14 +49,17 @@ Deno.test("onError handler - catches and formats RegistryError", async () => {
 
 Deno.test("onError handler - catches generic errors and returns 500", async () => {
   const app = new Hono();
-  
+
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
+      return c.json(
+        err.toResponse(),
+        err.statusCode as 400 | 401 | 403 | 404 | 415 | 429,
+      );
     }
     return c.json({ error: "internal server error" }, 500);
   });
-  
+
   app.get("/test", () => {
     throw new Error("unexpected error");
   });
@@ -79,18 +85,21 @@ Deno.test("onError handler - hides error details in production", async () => {
     Deno.env.delete("NODE_ENV");
 
     const app = new Hono();
-    
+
     app.onError((err, c) => {
       if (err instanceof RegistryError) {
-        return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
+        return c.json(
+          err.toResponse(),
+          err.statusCode as 400 | 401 | 403 | 404 | 415 | 429,
+        );
       }
       const isDev = isDevelopment();
       return c.json({
         error: "internal server error",
-        ...(isDev && { detail: String(err) })
+        ...(isDev && { detail: String(err) }),
       }, 500);
     });
-    
+
     app.get("/test", () => {
       throw new Error("secret error details");
     });
@@ -120,18 +129,21 @@ Deno.test("onError handler - includes error details in development", async () =>
     Deno.env.set("DENO_ENV", "development");
 
     const app = new Hono();
-    
+
     app.onError((err, c) => {
       if (err instanceof RegistryError) {
-        return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
+        return c.json(
+          err.toResponse(),
+          err.statusCode as 400 | 401 | 403 | 404 | 415 | 429,
+        );
       }
       const isDev = isDevelopment();
       return c.json({
         error: "internal server error",
-        ...(isDev && { detail: String(err) })
+        ...(isDev && { detail: String(err) }),
       }, 500);
     });
-    
+
     app.get("/test", () => {
       throw new Error("debug error");
     });
@@ -156,14 +168,17 @@ Deno.test("onError handler - includes error details in development", async () =>
 
 Deno.test("onError handler - allows successful requests through", async () => {
   const app = new Hono();
-  
+
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
+      return c.json(
+        err.toResponse(),
+        err.statusCode as 400 | 401 | 403 | 404 | 415 | 429,
+      );
     }
     return c.json({ error: "internal server error" }, 500);
   });
-  
+
   app.get("/test", (c) => {
     return c.json({ success: true });
   });
@@ -178,10 +193,13 @@ Deno.test("onError handler - allows successful requests through", async () => {
 
 Deno.test("onError handler - handles multiple error types", async () => {
   const app = new Hono();
-  
+
   app.onError((err, c) => {
     if (err instanceof RegistryError) {
-      return c.json(err.toResponse(), err.statusCode as 400 | 401 | 403 | 404 | 415 | 429);
+      return c.json(
+        err.toResponse(),
+        err.statusCode as 400 | 401 | 403 | 404 | 415 | 429,
+      );
     }
     return c.json({ error: "internal server error" }, 500);
   });

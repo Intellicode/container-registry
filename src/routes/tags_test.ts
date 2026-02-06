@@ -36,13 +36,15 @@ const createTestManifest = () => ({
   mediaType: ManifestMediaTypes.OCI_MANIFEST,
   config: {
     mediaType: "application/vnd.oci.image.config.v1+json",
-    digest: "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
+    digest:
+      "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7",
     size: 7023,
   },
   layers: [
     {
       mediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
-      digest: "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      digest:
+        "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
       size: 32654,
     },
   ],
@@ -50,7 +52,7 @@ const createTestManifest = () => ({
 
 Deno.test("GET /v2/<name>/tags/list - list tags successfully", async () => {
   const testDir = await createTestDir();
-  
+
   try {
     // Configure storage
     Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
@@ -61,29 +63,48 @@ Deno.test("GET /v2/<name>/tags/list - list tags successfully", async () => {
     const app = createTagRoutes();
 
     // Create test blobs (config and layer)
-    const configBlob = new TextEncoder().encode(JSON.stringify({ architecture: "amd64" }));
-    const configDigest = "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
+    const configBlob = new TextEncoder().encode(
+      JSON.stringify({ architecture: "amd64" }),
+    );
+    const configDigest =
+      "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
     await storage.putBlob(configDigest, createStream(configBlob));
 
     const layerBlob = new TextEncoder().encode("layer data");
-    const layerDigest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const layerDigest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
     await storage.putBlob(layerDigest, createStream(layerBlob));
 
     // Create and upload manifests with different tags
     const manifest1 = createTestManifest();
     const manifest1Bytes = new TextEncoder().encode(JSON.stringify(manifest1));
     const manifest1Digest = await calculateDigest(manifest1Bytes);
-    await storage.putManifest("myimage", "latest", manifest1Bytes, manifest1Digest);
+    await storage.putManifest(
+      "myimage",
+      "latest",
+      manifest1Bytes,
+      manifest1Digest,
+    );
 
     const manifest2 = createTestManifest();
     const manifest2Bytes = new TextEncoder().encode(JSON.stringify(manifest2));
     const manifest2Digest = await calculateDigest(manifest2Bytes);
-    await storage.putManifest("myimage", "v1.0", manifest2Bytes, manifest2Digest);
+    await storage.putManifest(
+      "myimage",
+      "v1.0",
+      manifest2Bytes,
+      manifest2Digest,
+    );
 
     const manifest3 = createTestManifest();
     const manifest3Bytes = new TextEncoder().encode(JSON.stringify(manifest3));
     const manifest3Digest = await calculateDigest(manifest3Bytes);
-    await storage.putManifest("myimage", "v2.0", manifest3Bytes, manifest3Digest);
+    await storage.putManifest(
+      "myimage",
+      "v2.0",
+      manifest3Bytes,
+      manifest3Digest,
+    );
 
     // List tags
     const req = new Request("http://localhost/myimage/tags/list");
@@ -107,7 +128,7 @@ Deno.test("GET /v2/<name>/tags/list - list tags successfully", async () => {
 
 Deno.test("GET /v2/<name>/tags/list - empty repository returns empty tags array", async () => {
   const testDir = await createTestDir();
-  
+
   try {
     // Configure storage
     Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
@@ -138,7 +159,7 @@ Deno.test("GET /v2/<name>/tags/list - empty repository returns empty tags array"
 
 Deno.test("GET /v2/<name>/tags/list - unknown repository returns 404", async () => {
   const testDir = await createTestDir();
-  
+
   try {
     // Configure storage
     Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
@@ -167,7 +188,7 @@ Deno.test("GET /v2/<name>/tags/list - unknown repository returns 404", async () 
 
 Deno.test("GET /v2/<name>/tags/list - invalid repository name returns 400", async () => {
   const testDir = await createTestDir();
-  
+
   try {
     // Configure storage
     Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
@@ -195,7 +216,7 @@ Deno.test("GET /v2/<name>/tags/list - invalid repository name returns 400", asyn
 
 Deno.test("GET /v2/<name>/tags/list - nested repository name works", async () => {
   const testDir = await createTestDir();
-  
+
   try {
     // Configure storage
     Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
@@ -206,26 +227,35 @@ Deno.test("GET /v2/<name>/tags/list - nested repository name works", async () =>
     const app = createTagRoutes();
 
     // Create test blobs
-    const configBlob = new TextEncoder().encode(JSON.stringify({ architecture: "amd64" }));
-    const configDigest = "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
+    const configBlob = new TextEncoder().encode(
+      JSON.stringify({ architecture: "amd64" }),
+    );
+    const configDigest =
+      "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
     await storage.putBlob(configDigest, createStream(configBlob));
 
     const layerBlob = new TextEncoder().encode("layer data");
-    const layerDigest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const layerDigest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
     await storage.putBlob(layerDigest, createStream(layerBlob));
 
     // Create manifest with nested repository name
     const manifest = createTestManifest();
     const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
     const manifestDigest = await calculateDigest(manifestBytes);
-    await storage.putManifest("myorg/myimage", "v1.0", manifestBytes, manifestDigest);
+    await storage.putManifest(
+      "myorg/myimage",
+      "v1.0",
+      manifestBytes,
+      manifestDigest,
+    );
 
     // List tags
     const req = new Request("http://localhost/myorg/myimage/tags/list");
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    
+
     const body = await res.json();
     assertEquals(body.name, "myorg/myimage");
     assertEquals(body.tags, ["v1.0"]);
@@ -237,7 +267,7 @@ Deno.test("GET /v2/<name>/tags/list - nested repository name works", async () =>
 
 Deno.test("GET /v2/<name>/tags/list - tags are sorted alphabetically", async () => {
   const testDir = await createTestDir();
-  
+
   try {
     // Configure storage
     Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
@@ -248,17 +278,21 @@ Deno.test("GET /v2/<name>/tags/list - tags are sorted alphabetically", async () 
     const app = createTagRoutes();
 
     // Create test blobs
-    const configBlob = new TextEncoder().encode(JSON.stringify({ architecture: "amd64" }));
-    const configDigest = "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
+    const configBlob = new TextEncoder().encode(
+      JSON.stringify({ architecture: "amd64" }),
+    );
+    const configDigest =
+      "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
     await storage.putBlob(configDigest, createStream(configBlob));
 
     const layerBlob = new TextEncoder().encode("layer data");
-    const layerDigest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const layerDigest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
     await storage.putBlob(layerDigest, createStream(layerBlob));
 
     // Create manifests with tags in non-alphabetical order
     const tags = ["zebra", "alpha", "v2.0", "v1.0", "latest", "beta"];
-    
+
     for (const tag of tags) {
       const manifest = createTestManifest();
       const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
@@ -271,11 +305,18 @@ Deno.test("GET /v2/<name>/tags/list - tags are sorted alphabetically", async () 
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    
+
     const body = await res.json();
     assertEquals(body.name, "sorttest");
     // Verify tags are sorted alphabetically
-    assertEquals(body.tags, ["alpha", "beta", "latest", "v1.0", "v2.0", "zebra"]);
+    assertEquals(body.tags, [
+      "alpha",
+      "beta",
+      "latest",
+      "v1.0",
+      "v2.0",
+      "zebra",
+    ]);
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);
@@ -284,7 +325,7 @@ Deno.test("GET /v2/<name>/tags/list - tags are sorted alphabetically", async () 
 
 Deno.test("GET /v2/<name>/tags/list - pagination with n parameter", async () => {
   const testDir = await createTestDir();
-  
+
   try {
     // Configure storage
     Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
@@ -295,17 +336,32 @@ Deno.test("GET /v2/<name>/tags/list - pagination with n parameter", async () => 
     const app = createTagRoutes();
 
     // Create test blobs
-    const configBlob = new TextEncoder().encode(JSON.stringify({ architecture: "amd64" }));
-    const configDigest = "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
+    const configBlob = new TextEncoder().encode(
+      JSON.stringify({ architecture: "amd64" }),
+    );
+    const configDigest =
+      "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
     await storage.putBlob(configDigest, createStream(configBlob));
 
     const layerBlob = new TextEncoder().encode("layer data");
-    const layerDigest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const layerDigest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
     await storage.putBlob(layerDigest, createStream(layerBlob));
 
     // Create 10 tags
-    const tags = ["v1.0", "v1.1", "v1.2", "v1.3", "v1.4", "v1.5", "v1.6", "v1.7", "v1.8", "v1.9"];
-    
+    const tags = [
+      "v1.0",
+      "v1.1",
+      "v1.2",
+      "v1.3",
+      "v1.4",
+      "v1.5",
+      "v1.6",
+      "v1.7",
+      "v1.8",
+      "v1.9",
+    ];
+
     for (const tag of tags) {
       const manifest = createTestManifest();
       const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
@@ -318,12 +374,12 @@ Deno.test("GET /v2/<name>/tags/list - pagination with n parameter", async () => 
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    
+
     const body = await res.json();
     assertEquals(body.name, "myimage");
     assertEquals(body.tags.length, 3);
     assertEquals(body.tags, ["v1.0", "v1.1", "v1.2"]);
-    
+
     // Should have Link header for next page
     const linkHeader = res.headers.get("Link");
     assertExists(linkHeader);
@@ -337,7 +393,7 @@ Deno.test("GET /v2/<name>/tags/list - pagination with n parameter", async () => 
 
 Deno.test("GET /v2/<name>/tags/list - pagination with n and last parameters", async () => {
   const testDir = await createTestDir();
-  
+
   try {
     // Configure storage
     Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
@@ -348,17 +404,32 @@ Deno.test("GET /v2/<name>/tags/list - pagination with n and last parameters", as
     const app = createTagRoutes();
 
     // Create test blobs
-    const configBlob = new TextEncoder().encode(JSON.stringify({ architecture: "amd64" }));
-    const configDigest = "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
+    const configBlob = new TextEncoder().encode(
+      JSON.stringify({ architecture: "amd64" }),
+    );
+    const configDigest =
+      "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
     await storage.putBlob(configDigest, createStream(configBlob));
 
     const layerBlob = new TextEncoder().encode("layer data");
-    const layerDigest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const layerDigest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
     await storage.putBlob(layerDigest, createStream(layerBlob));
 
     // Create 10 tags
-    const tags = ["v1.0", "v1.1", "v1.2", "v1.3", "v1.4", "v1.5", "v1.6", "v1.7", "v1.8", "v1.9"];
-    
+    const tags = [
+      "v1.0",
+      "v1.1",
+      "v1.2",
+      "v1.3",
+      "v1.4",
+      "v1.5",
+      "v1.6",
+      "v1.7",
+      "v1.8",
+      "v1.9",
+    ];
+
     for (const tag of tags) {
       const manifest = createTestManifest();
       const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
@@ -371,12 +442,12 @@ Deno.test("GET /v2/<name>/tags/list - pagination with n and last parameters", as
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    
+
     const body = await res.json();
     assertEquals(body.name, "myimage");
     assertEquals(body.tags.length, 3);
     assertEquals(body.tags, ["v1.3", "v1.4", "v1.5"]);
-    
+
     // Should have Link header for next page
     const linkHeader = res.headers.get("Link");
     assertExists(linkHeader);
@@ -389,7 +460,7 @@ Deno.test("GET /v2/<name>/tags/list - pagination with n and last parameters", as
 
 Deno.test("GET /v2/<name>/tags/list - pagination last page has no Link header", async () => {
   const testDir = await createTestDir();
-  
+
   try {
     // Configure storage
     Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
@@ -400,17 +471,21 @@ Deno.test("GET /v2/<name>/tags/list - pagination last page has no Link header", 
     const app = createTagRoutes();
 
     // Create test blobs
-    const configBlob = new TextEncoder().encode(JSON.stringify({ architecture: "amd64" }));
-    const configDigest = "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
+    const configBlob = new TextEncoder().encode(
+      JSON.stringify({ architecture: "amd64" }),
+    );
+    const configDigest =
+      "sha256:b5b2b2c507a0944348e0303114d8d93aaaa081732b86451d9bce1f432a537bc7";
     await storage.putBlob(configDigest, createStream(configBlob));
 
     const layerBlob = new TextEncoder().encode("layer data");
-    const layerDigest = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const layerDigest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
     await storage.putBlob(layerDigest, createStream(layerBlob));
 
     // Create 5 tags
     const tags = ["v1.0", "v1.1", "v1.2", "v1.3", "v1.4"];
-    
+
     for (const tag of tags) {
       const manifest = createTestManifest();
       const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest));
@@ -423,10 +498,10 @@ Deno.test("GET /v2/<name>/tags/list - pagination last page has no Link header", 
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    
+
     const body = await res.json();
     assertEquals(body.tags.length, 5);
-    
+
     // Should NOT have Link header (no more pages)
     const linkHeader = res.headers.get("Link");
     assertEquals(linkHeader, null);

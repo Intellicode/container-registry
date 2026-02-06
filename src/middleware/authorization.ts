@@ -4,7 +4,10 @@
 
 import type { Context, Next } from "hono";
 import { ErrorCodes, RegistryError } from "../types/errors.ts";
-import type { AccessControlService, Permission } from "../services/access-control.ts";
+import type {
+  AccessControlService,
+  Permission,
+} from "../services/access-control.ts";
 
 /**
  * Creates authorization middleware that checks repository-level permissions.
@@ -40,7 +43,9 @@ export function createAuthorizationMiddleware(
       }
     } else {
       // Check if user has permission
-      if (!accessControlService.checkPermission(username, repository, permission)) {
+      if (
+        !accessControlService.checkPermission(username, repository, permission)
+      ) {
         return respondForbidden(c, repository, permission);
       }
     }
@@ -106,7 +111,9 @@ function extractRepositoryAndPermission(
 function getUsernameFromContext(c: Context): string | undefined {
   // Try to get username from JWT token payload
   const tokenPayload = c.get("tokenPayload");
-  if (tokenPayload && typeof tokenPayload === "object" && "sub" in tokenPayload) {
+  if (
+    tokenPayload && typeof tokenPayload === "object" && "sub" in tokenPayload
+  ) {
     return tokenPayload.sub as string;
   }
 

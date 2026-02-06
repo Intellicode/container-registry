@@ -59,8 +59,12 @@ function validateRepositoryName(name: string): boolean {
 /**
  * Check if a media type is supported for manifests.
  */
-function isSupportedMediaType(mediaType: string): mediaType is ManifestMediaType {
-  return Object.values(ManifestMediaTypes).includes(mediaType as ManifestMediaType);
+function isSupportedMediaType(
+  mediaType: string,
+): mediaType is ManifestMediaType {
+  return Object.values(ManifestMediaTypes).includes(
+    mediaType as ManifestMediaType,
+  );
 }
 
 /**
@@ -88,7 +92,8 @@ function validateManifestStructure(
   if (obj.mediaType !== mediaType) {
     return {
       valid: false,
-      error: `manifest mediaType ${obj.mediaType} does not match Content-Type ${mediaType}`,
+      error:
+        `manifest mediaType ${obj.mediaType} does not match Content-Type ${mediaType}`,
     };
   }
 
@@ -134,7 +139,10 @@ function validateManifestStructure(
     for (let i = 0; i < manifestsArray.length; i++) {
       const manifestError = validateDescriptor(manifestsArray[i] as Descriptor);
       if (manifestError) {
-        return { valid: false, error: `invalid manifest ${i}: ${manifestError}` };
+        return {
+          valid: false,
+          error: `invalid manifest ${i}: ${manifestError}`,
+        };
       }
     }
   }
@@ -444,7 +452,9 @@ export function createManifestRoutes(): Hono {
     }
 
     // Extract blob digests and verify they exist
-    const blobDigests = extractBlobDigests(manifest as ImageManifest | ImageIndex);
+    const blobDigests = extractBlobDigests(
+      manifest as ImageManifest | ImageIndex,
+    );
     for (const digest of blobDigests) {
       const exists = await storage.hasBlob(digest);
       if (!exists) {
@@ -520,56 +530,60 @@ export function createManifestRoutes(): Hono {
    * HEAD /v2/<name>/manifests/<reference>
    * Check if a manifest exists.
    */
-  manifests.on("HEAD", "/:name{.+}/manifests/:reference", async (c: Context) => {
-    const name = c.req.param("name");
-    const reference = c.req.param("reference");
-    const acceptHeader = c.req.header("Accept");
+  manifests.on(
+    "HEAD",
+    "/:name{.+}/manifests/:reference",
+    async (c: Context) => {
+      const name = c.req.param("name");
+      const reference = c.req.param("reference");
+      const acceptHeader = c.req.header("Accept");
 
-    // Validate repository name
-    if (!validateRepositoryName(name)) {
-      return nameInvalid(
-        name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
-      );
-    }
+      // Validate repository name
+      if (!validateRepositoryName(name)) {
+        return nameInvalid(
+          name,
+          "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+        );
+      }
 
-    // Get manifest from storage
-    const result = await storage.getManifest(name, reference);
-    if (!result) {
-      return manifestUnknown(reference);
-    }
+      // Get manifest from storage
+      const result = await storage.getManifest(name, reference);
+      if (!result) {
+        return manifestUnknown(reference);
+      }
 
-    // Parse manifest to get media type
-    const decoder = new TextDecoder();
-    const manifestText = decoder.decode(result.content);
-    let manifest: unknown;
-    try {
-      manifest = JSON.parse(manifestText);
-    } catch {
-      return manifestInvalid("manifest is not valid JSON");
-    }
+      // Parse manifest to get media type
+      const decoder = new TextDecoder();
+      const manifestText = decoder.decode(result.content);
+      let manifest: unknown;
+      try {
+        manifest = JSON.parse(manifestText);
+      } catch {
+        return manifestInvalid("manifest is not valid JSON");
+      }
 
-    const manifestObj = manifest as Record<string, unknown>;
-    const mediaType = manifestObj.mediaType as string;
+      const manifestObj = manifest as Record<string, unknown>;
+      const mediaType = manifestObj.mediaType as string;
 
-    // Check content negotiation
-    if (!isAcceptable(acceptHeader, mediaType)) {
-      return manifestUnacceptable(
-        `manifest media type ${mediaType} does not match Accept header`,
-        {
-          acceptHeader,
-          manifestMediaType: mediaType,
-        },
-      );
-    }
+      // Check content negotiation
+      if (!isAcceptable(acceptHeader, mediaType)) {
+        return manifestUnacceptable(
+          `manifest media type ${mediaType} does not match Accept header`,
+          {
+            acceptHeader,
+            manifestMediaType: mediaType,
+          },
+        );
+      }
 
-    // Return headers only
-    c.header("Content-Type", mediaType || "application/octet-stream");
-    c.header("Docker-Content-Digest", result.digest);
-    c.header("Content-Length", result.content.length.toString());
+      // Return headers only
+      c.header("Content-Type", mediaType || "application/octet-stream");
+      c.header("Docker-Content-Digest", result.digest);
+      c.header("Content-Length", result.content.length.toString());
 
-    return c.body(null, 200);
-  });
+      return c.body(null, 200);
+    },
+  );
 
   return manifests;
 }

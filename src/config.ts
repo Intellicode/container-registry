@@ -175,9 +175,10 @@ function parsePositiveInt(
 }
 
 function parseAccessControlConfig(): AccessControlConfig {
-  const enabled = Deno.env.get("REGISTRY_ACCESS_CONTROL_ENABLED")?.toLowerCase() === "true";
+  const enabled =
+    Deno.env.get("REGISTRY_ACCESS_CONTROL_ENABLED")?.toLowerCase() === "true";
   const configPath = Deno.env.get("REGISTRY_ACCESS_CONTROL_CONFIG");
-  
+
   if (!enabled || !configPath) {
     // Access control disabled - allow all by default
     return {
@@ -191,7 +192,7 @@ function parseAccessControlConfig(): AccessControlConfig {
   try {
     const configContent = Deno.readTextFileSync(configPath);
     const config = JSON.parse(configContent);
-    
+
     return {
       enabled: true,
       defaultPolicy: config.defaultPolicy === "allow" ? "allow" : "deny",
@@ -201,11 +202,12 @@ function parseAccessControlConfig(): AccessControlConfig {
   } catch (error) {
     console.error(`Failed to load access control config: ${error}`);
     throw new Error(
-      `Failed to load access control config from ${configPath}: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to load access control config from ${configPath}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
     );
   }
 }
-
 
 /** Global configuration instance */
 let config: RegistryConfig | null = null;
