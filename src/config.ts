@@ -37,12 +37,26 @@ export interface PaginationConfig {
   maxLimit: number;
 }
 
+export interface AccessRule {
+  repository: string; // Pattern with wildcards: "myorg/*", "*"
+  users: string[]; // Usernames or groups, "*" for all users
+  permissions: ("pull" | "push" | "delete")[]; // Allowed actions
+}
+
+export interface AccessControlConfig {
+  enabled: boolean;
+  defaultPolicy: "allow" | "deny";
+  adminUsers: string[]; // Users who bypass all access checks
+  rules: AccessRule[];
+}
+
 export interface RegistryConfig {
   server: ServerConfig;
   storage: StorageConfig;
   log: LogConfig;
   auth: AuthConfig;
   pagination: PaginationConfig;
+  access: AccessControlConfig;
 }
 
 function parsePort(portValue: string | undefined, defaultPort: number): number {
@@ -92,6 +106,7 @@ export function loadConfig(): RegistryConfig {
         1000,
       ),
     },
+    access: parseAccessControlConfig(),
   };
 }
 
@@ -158,6 +173,39 @@ function parsePositiveInt(
   }
   return parsed;
 }
+
+function parseAccessControlConfig(): AccessControlConfig {
+  const enabled = Deno.env.get("REGISTRY_ACCESS_CONTROL_ENABLED")?.toLowerCase() === "true";
+  const configPath = Deno.env.get("REGISTRY_ACCESS_CONTROL_CONFIG");
+  
+  if (!enabled || !configPath) {
+    // Access control disabled - allow all by default
+    return {
+      enabled: false,
+      defaultPolicy: "allow",
+      adminUsers: [],
+      rules: [],
+    };
+  }
+
+  try {
+    const configContent = Deno.readTextFileSync(configPath);
+    const config = JSON.parse(configContent);
+    
+    return {
+      enabled: true,
+      defaultPolicy: config.defaultPolicy === "allow" ? "allow" : "deny",
+      adminUsers: Array.isArray(config.adminUsers) ? config.adminUsers : [],
+      rules: Array.isArray(config.rules) ? config.rules : [],
+    };
+  } catch (error) {
+    console.error(`Failed to load access control config: ${error}`);
+    throw new Error(
+      `Failed to load access control config from ${configPath}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 
 /** Global configuration instance */
 let config: RegistryConfig | null = null;
