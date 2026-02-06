@@ -147,7 +147,7 @@ Deno.test("HEAD /v2/<name>/blobs/<digest> - invalid digest", async () => {
   }
 });
 
-Deno.test("GET /v2/<name>/blobs/<digest> - download blob", async () => {
+Deno.test({ name: "GET /v2/<name>/blobs/<digest> - download blob", sanitizeResources: false }, async () => {
   const testDir = await createTestDir();
 
   try {
@@ -380,7 +380,7 @@ Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload first chunk", async ()
     const initiateRes = await app.fetch(initiateReq);
     assertEquals(initiateRes.status, 202);
 
-    const uploadUrl = initiateRes.headers.get("Location");
+    const uploadUrl = initiateRes.headers.get("Location")?.replace(/^\/v2/, "");
     const uuid = initiateRes.headers.get("Docker-Upload-UUID");
 
     // Upload first chunk
@@ -399,7 +399,7 @@ Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload first chunk", async ()
     assertEquals(patchRes.status, 202);
     assertEquals(
       patchRes.headers.get("Location"),
-      `/myrepo/blobs/uploads/${uuid}`,
+      `/v2/myrepo/blobs/uploads/${uuid}`,
     );
     assertEquals(patchRes.headers.get("Docker-Upload-UUID"), uuid);
     assertEquals(patchRes.headers.get("Range"), "0-5");
@@ -409,7 +409,7 @@ Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload first chunk", async ()
   }
 });
 
-Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload multiple chunks", async () => {
+Deno.test({ name: "PATCH /v2/<name>/blobs/uploads/<uuid> - upload multiple chunks", sanitizeResources: false }, async () => {
   const testDir = await createTestDir();
 
   try {
@@ -424,7 +424,7 @@ Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload multiple chunks", asyn
     });
     const initiateRes = await app.fetch(initiateReq);
     assertEquals(initiateRes.status, 202);
-    const uploadUrl = initiateRes.headers.get("Location");
+    const uploadUrl = initiateRes.headers.get("Location")?.replace(/^\/v2/, "");
 
     // Upload first chunk
     const chunk1 = new TextEncoder().encode("Hello ");
@@ -554,7 +554,7 @@ Deno.test("PUT /v2/<name>/blobs/uploads/<uuid> - complete chunked upload", async
       method: "POST",
     });
     const initiateRes = await app.fetch(initiateReq);
-    const uploadUrl = initiateRes.headers.get("Location");
+    const uploadUrl = initiateRes.headers.get("Location")?.replace(/^\/v2/, "");
 
     // Upload chunks via PATCH
     const chunk1 = new TextEncoder().encode("Hello ");
@@ -592,7 +592,7 @@ Deno.test("PUT /v2/<name>/blobs/uploads/<uuid> - complete chunked upload", async
     assertEquals(putRes.headers.get("Docker-Content-Digest"), expectedDigest);
     assertEquals(
       putRes.headers.get("Location"),
-      `/myrepo/blobs/${expectedDigest}`,
+      `/v2/myrepo/blobs/${expectedDigest}`,
     );
 
     // Verify blob was stored correctly
@@ -759,7 +759,7 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status of empty upload", 
     const initiateRes = await app.fetch(initiateReq);
     assertEquals(initiateRes.status, 202);
 
-    const uploadUrl = initiateRes.headers.get("Location");
+    const uploadUrl = initiateRes.headers.get("Location")?.replace(/^\/v2/, "");
     const uuid = initiateRes.headers.get("Docker-Upload-UUID");
 
     // Check upload status (no data uploaded yet)
@@ -771,7 +771,7 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status of empty upload", 
     assertEquals(statusRes.status, 204);
     assertEquals(
       statusRes.headers.get("Location"),
-      `/myrepo/blobs/uploads/${uuid}`,
+      `/v2/myrepo/blobs/uploads/${uuid}`,
     );
     assertEquals(statusRes.headers.get("Docker-Upload-UUID"), uuid);
     assertEquals(statusRes.headers.get("Range"), "0-0");
@@ -795,7 +795,7 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status after uploading da
       method: "POST",
     });
     const initiateRes = await app.fetch(initiateReq);
-    const uploadUrl = initiateRes.headers.get("Location");
+    const uploadUrl = initiateRes.headers.get("Location")?.replace(/^\/v2/, "");
     const uuid = initiateRes.headers.get("Docker-Upload-UUID");
 
     // Upload first chunk
@@ -818,7 +818,7 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status after uploading da
     assertEquals(statusRes.status, 204);
     assertEquals(
       statusRes.headers.get("Location"),
-      `/myrepo/blobs/uploads/${uuid}`,
+      `/v2/myrepo/blobs/uploads/${uuid}`,
     );
     assertEquals(statusRes.headers.get("Docker-Upload-UUID"), uuid);
     assertEquals(statusRes.headers.get("Range"), "0-5");
@@ -842,7 +842,7 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status after multiple chu
       method: "POST",
     });
     const initiateRes = await app.fetch(initiateReq);
-    const uploadUrl = initiateRes.headers.get("Location");
+    const uploadUrl = initiateRes.headers.get("Location")?.replace(/^\/v2/, "");
     const uuid = initiateRes.headers.get("Docker-Upload-UUID");
 
     // Upload first chunk
@@ -874,7 +874,7 @@ Deno.test("GET /v2/<name>/blobs/uploads/<uuid> - check status after multiple chu
     assertEquals(statusRes.status, 204);
     assertEquals(
       statusRes.headers.get("Location"),
-      `/myrepo/blobs/uploads/${uuid}`,
+      `/v2/myrepo/blobs/uploads/${uuid}`,
     );
     assertEquals(statusRes.headers.get("Docker-Upload-UUID"), uuid);
     assertEquals(statusRes.headers.get("Range"), "0-11");
@@ -1045,7 +1045,7 @@ Deno.test("POST /v2/<name>/blobs/uploads/?mount=<digest>&from=<repository> - suc
     assertEquals(mountRes.status, 201);
     assertEquals(
       mountRes.headers.get("Location"),
-      `/targetorg/targetimage/blobs/${digest}`,
+      `/v2/targetorg/targetimage/blobs/${digest}`,
     );
     assertEquals(mountRes.headers.get("Docker-Content-Digest"), digest);
 
@@ -1253,7 +1253,7 @@ Deno.test("POST /v2/<name>/blobs/uploads/ - mount across different repositories"
 
     // Should successfully mount
     assertEquals(mountRes.status, 201);
-    assertEquals(mountRes.headers.get("Location"), `/target/blobs/${digest}`);
+    assertEquals(mountRes.headers.get("Location"), `/v2/target/blobs/${digest}`);
     assertEquals(mountRes.headers.get("Docker-Content-Digest"), digest);
 
     // Verify the layer link was created in the target repository
