@@ -8,6 +8,7 @@ import { RegistryError } from "./types/errors.ts";
 import { createV2Routes } from "./routes/v2.ts";
 import { isDevelopment } from "./middleware/errors.ts";
 import { createAuthService } from "./services/auth.ts";
+import { createTokenService } from "./services/token.ts";
 import { createUploadCleanupService } from "./services/upload-cleanup.ts";
 import { getConfig } from "./config.ts";
 
@@ -21,12 +22,22 @@ export async function createApp(): Promise<Hono> {
   // Initialize auth service if needed
   const config = getConfig();
   let authService;
+  let tokenService;
+  
   if (config.auth.type === "basic" && config.auth.htpasswd) {
     try {
       authService = await createAuthService(config.auth.htpasswd);
       console.log(`Loaded ${authService.getCredentialCount()} users from htpasswd file`);
     } catch (error) {
       console.error(`Failed to initialize auth service: ${error}`);
+      throw error;
+    }
+  } else if (config.auth.type === "token" && config.auth.token) {
+    try {
+      tokenService = await createTokenService(config.auth.token);
+      console.log(`Token service initialized with issuer: ${config.auth.token.issuer}`);
+    } catch (error) {
+      console.error(`Failed to initialize token service: ${error}`);
       throw error;
     }
   }
@@ -69,7 +80,7 @@ export async function createApp(): Promise<Hono> {
 
   // Mount v2 API routes at /v2
   // Note: Hono's route() adds the prefix, so routes defined in v2Routes are relative
-  app.route("/v2", createV2Routes(authService));
+  app.route("/v2", createV2Routes(authService, tokenService));
 
   return app;
 }

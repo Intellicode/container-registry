@@ -18,10 +18,18 @@ export interface LogConfig {
   level: "debug" | "info" | "warn" | "error";
 }
 
+export interface TokenAuthConfig {
+  realm: string;
+  service: string;
+  issuer: string;
+  publicKey: string;
+}
+
 export interface AuthConfig {
-  type: "none" | "basic";
+  type: "none" | "basic" | "token";
   realm: string;
   htpasswd?: string;
+  token?: TokenAuthConfig;
 }
 
 export interface PaginationConfig {
@@ -72,6 +80,7 @@ export function loadConfig(): RegistryConfig {
       type: parseAuthType(Deno.env.get("REGISTRY_AUTH_TYPE")),
       realm: Deno.env.get("REGISTRY_AUTH_REALM") ?? "Registry",
       htpasswd: Deno.env.get("REGISTRY_AUTH_HTPASSWD"),
+      token: parseTokenConfig(),
     },
     pagination: {
       defaultLimit: parsePositiveInt(
@@ -102,14 +111,41 @@ function parseLogLevel(
   }
 }
 
-function parseAuthType(type: string | undefined): "none" | "basic" {
+function parseAuthType(type: string | undefined): "none" | "basic" | "token" {
   switch (type?.toLowerCase()) {
     case "basic":
       return "basic";
+    case "token":
+      return "token";
     case "none":
     default:
       return "none";
   }
+}
+
+function parseTokenConfig(): TokenAuthConfig | undefined {
+  const authType = Deno.env.get("REGISTRY_AUTH_TYPE");
+  if (authType?.toLowerCase() !== "token") {
+    return undefined;
+  }
+
+  const realm = Deno.env.get("REGISTRY_AUTH_TOKEN_REALM");
+  const service = Deno.env.get("REGISTRY_AUTH_TOKEN_SERVICE");
+  const issuer = Deno.env.get("REGISTRY_AUTH_TOKEN_ISSUER");
+  const publicKey = Deno.env.get("REGISTRY_AUTH_TOKEN_PUBLICKEY");
+
+  if (!realm || !service || !issuer || !publicKey) {
+    throw new Error(
+      "Token auth requires REGISTRY_AUTH_TOKEN_REALM, REGISTRY_AUTH_TOKEN_SERVICE, REGISTRY_AUTH_TOKEN_ISSUER, and REGISTRY_AUTH_TOKEN_PUBLICKEY",
+    );
+  }
+
+  return {
+    realm,
+    service,
+    issuer,
+    publicKey,
+  };
 }
 
 function parsePositiveInt(

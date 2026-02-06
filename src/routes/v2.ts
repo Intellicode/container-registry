@@ -11,16 +11,17 @@ import { createTagRoutes } from "./tags.ts";
 import { createCatalogRoutes } from "./catalog.ts";
 import { getConfig } from "../config.ts";
 import type { AuthService } from "../services/auth.ts";
+import type { TokenService } from "../services/token.ts";
 
 /**
  * Creates the v2 API routes handler.
  */
-export function createV2Routes(authService?: AuthService): Hono {
+export function createV2Routes(authService?: AuthService, tokenService?: TokenService): Hono {
   const v2 = new Hono({ strict: false }); // Allow trailing slashes
   const config = getConfig();
 
   // Apply authentication middleware to all v2 routes
-  v2.use("*", createAuthMiddleware(config.auth, authService));
+  v2.use("*", createAuthMiddleware(config.auth, authService, tokenService));
 
   // Base endpoint - API version check
   // Returns 200 OK if the registry implements the V2 API
