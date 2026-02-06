@@ -16,8 +16,9 @@ import { getConfig } from "./config.ts";
 
 /**
  * Creates and configures the Hono application.
+ * Returns both the app and the cleanup service so it can be stopped in tests.
  */
-export async function createApp(): Promise<Hono> {
+export async function createApp(): Promise<{ app: Hono; cleanup: ReturnType<typeof createUploadCleanupService> }> {
   // Set strict: false to allow both /v2 and /v2/ to work
   const app = new Hono({ strict: false });
 
@@ -53,7 +54,7 @@ export async function createApp(): Promise<Hono> {
   }
 
   // Initialize upload cleanup service
-  createUploadCleanupService({
+  const cleanupService = createUploadCleanupService({
     rootDirectory: config.storage.rootDirectory,
     uploadTimeout: config.storage.uploadTimeout,
     cleanupInterval: config.storage.cleanupInterval,
@@ -96,5 +97,5 @@ export async function createApp(): Promise<Hono> {
   // Note: Hono's route() adds the prefix, so routes defined in v2Routes are relative
   app.route("/v2", createV2Routes(authService, tokenService));
 
-  return app;
+  return { app, cleanup: cleanupService };
 }

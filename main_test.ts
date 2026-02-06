@@ -6,6 +6,9 @@ Deno.test("V2 Endpoint Tests", async (t) => {
   // Store original env to restore later
   const originalAuthType = Deno.env.get("REGISTRY_AUTH_TYPE");
   const originalAuthRealm = Deno.env.get("REGISTRY_AUTH_REALM");
+  
+  // Track cleanup services to stop them after tests
+  const cleanupServices: Array<{ stop: () => void }> = [];
 
   const restoreEnv = () => {
     if (originalAuthType !== undefined) {
@@ -19,6 +22,11 @@ Deno.test("V2 Endpoint Tests", async (t) => {
       Deno.env.delete("REGISTRY_AUTH_REALM");
     }
     resetConfig();
+    
+    // Stop all cleanup services
+    for (const service of cleanupServices) {
+      service.stop();
+    }
   };
 
   try {
@@ -28,7 +36,8 @@ Deno.test("V2 Endpoint Tests", async (t) => {
         Deno.env.set("REGISTRY_AUTH_TYPE", "none");
         resetConfig();
 
-        const app = await createApp();
+        const { app, cleanup } = await createApp();
+        cleanupServices.push(cleanup);
         const response = await app.request("/v2/");
 
         assertEquals(response.status, 200);
@@ -41,7 +50,8 @@ Deno.test("V2 Endpoint Tests", async (t) => {
         Deno.env.set("REGISTRY_AUTH_TYPE", "none");
         resetConfig();
 
-        const app = await createApp();
+        const { app, cleanup } = await createApp();
+        cleanupServices.push(cleanup);
         const response = await app.request("/v2");
 
         assertEquals(response.status, 200);
@@ -54,7 +64,8 @@ Deno.test("V2 Endpoint Tests", async (t) => {
         Deno.env.set("REGISTRY_AUTH_TYPE", "none");
         resetConfig();
 
-        const app = await createApp();
+        const { app, cleanup } = await createApp();
+        cleanupServices.push(cleanup);
         const response = await app.request("/v2/");
 
         assertEquals(
@@ -68,7 +79,8 @@ Deno.test("V2 Endpoint Tests", async (t) => {
       Deno.env.set("REGISTRY_AUTH_TYPE", "none");
       resetConfig();
 
-      const app = await createApp();
+      const { app, cleanup } = await createApp();
+      cleanupServices.push(cleanup);
       const response = await app.request("/v2/");
       const body = await response.json();
 
@@ -81,7 +93,8 @@ Deno.test("V2 Endpoint Tests", async (t) => {
         Deno.env.set("REGISTRY_AUTH_TYPE", "basic");
         resetConfig();
 
-        const app = await createApp();
+        const { app, cleanup } = await createApp();
+        cleanupServices.push(cleanup);
         const response = await app.request("/v2/");
 
         assertEquals(response.status, 401);
@@ -95,7 +108,8 @@ Deno.test("V2 Endpoint Tests", async (t) => {
         Deno.env.set("REGISTRY_AUTH_REALM", "Registry");
         resetConfig();
 
-        const app = await createApp();
+        const { app, cleanup } = await createApp();
+        cleanupServices.push(cleanup);
         const response = await app.request("/v2/");
 
         assertEquals(response.status, 401);
@@ -112,7 +126,8 @@ Deno.test("V2 Endpoint Tests", async (t) => {
         Deno.env.set("REGISTRY_AUTH_TYPE", "basic");
         resetConfig();
 
-        const app = await createApp();
+        const { app, cleanup } = await createApp();
+        cleanupServices.push(cleanup);
         const response = await app.request("/v2/");
         const body = await response.json();
 
@@ -133,7 +148,8 @@ Deno.test("V2 Endpoint Tests", async (t) => {
       Deno.env.set("REGISTRY_AUTH_REALM", "MyCustomRealm");
       resetConfig();
 
-      const app = await createApp();
+      const { app, cleanup } = await createApp();
+      cleanupServices.push(cleanup);
       const response = await app.request("/v2/");
 
       assertEquals(response.status, 401);

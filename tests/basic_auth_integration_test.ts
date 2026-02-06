@@ -12,6 +12,9 @@ Deno.test("Basic Auth Integration Tests", async (t) => {
   // Store original env
   const originalAuthType = Deno.env.get("REGISTRY_AUTH_TYPE");
   const originalAuthHtpasswd = Deno.env.get("REGISTRY_AUTH_HTPASSWD");
+  
+  // Track cleanup services to stop them after tests
+  const cleanupServices: Array<{ stop: () => void }> = [];
 
   const restoreEnv = () => {
     if (originalAuthType !== undefined) {
@@ -25,6 +28,11 @@ Deno.test("Basic Auth Integration Tests", async (t) => {
       Deno.env.delete("REGISTRY_AUTH_HTPASSWD");
     }
     resetConfig();
+    
+    // Stop all cleanup services
+    for (const service of cleanupServices) {
+      service.stop();
+    }
   };
 
   try {
@@ -41,7 +49,8 @@ Deno.test("Basic Auth Integration Tests", async (t) => {
           Deno.env.set("REGISTRY_AUTH_HTPASSWD", tempFile);
           resetConfig();
 
-          const app = await createApp();
+          const { app, cleanup } = await createApp();
+          cleanupServices.push(cleanup);
           const response = await app.request("/v2/");
 
           assertEquals(response.status, 401);
@@ -71,7 +80,8 @@ Deno.test("Basic Auth Integration Tests", async (t) => {
           Deno.env.set("REGISTRY_AUTH_HTPASSWD", tempFile);
           resetConfig();
 
-          const app = await createApp();
+          const { app, cleanup } = await createApp();
+          cleanupServices.push(cleanup);
           const response = await app.request("/v2/", {
             headers: {
               Authorization: "Basic " + btoa("testuser:testpass"),
@@ -98,7 +108,8 @@ Deno.test("Basic Auth Integration Tests", async (t) => {
           Deno.env.set("REGISTRY_AUTH_HTPASSWD", tempFile);
           resetConfig();
 
-          const app = await createApp();
+          const { app, cleanup } = await createApp();
+          cleanupServices.push(cleanup);
           const response = await app.request("/v2/", {
             headers: {
               Authorization: "Basic " + btoa("testuser:wrongpass"),
@@ -133,7 +144,8 @@ Deno.test("Basic Auth Integration Tests", async (t) => {
           Deno.env.set("REGISTRY_AUTH_HTPASSWD", tempFile);
           resetConfig();
 
-          const app = await createApp();
+          const { app, cleanup } = await createApp();
+          cleanupServices.push(cleanup);
           const response = await app.request("/v2/", {
             headers: {
               Authorization: "Basic " + btoa("bob:password"),
@@ -168,7 +180,8 @@ Deno.test("Basic Auth Integration Tests", async (t) => {
           Deno.env.set("REGISTRY_AUTH_HTPASSWD", tempFile);
           resetConfig();
 
-          const app = await createApp();
+          const { app, cleanup } = await createApp();
+          cleanupServices.push(cleanup);
 
           // Test alice
           let response = await app.request("/v2/", {
@@ -212,7 +225,8 @@ Deno.test("Basic Auth Integration Tests", async (t) => {
           Deno.env.set("REGISTRY_AUTH_HTPASSWD", tempFile);
           resetConfig();
 
-          const app = await createApp();
+          const { app, cleanup } = await createApp();
+          cleanupServices.push(cleanup);
 
           // Test various endpoints without auth - should all return 401
           const endpoints = [
