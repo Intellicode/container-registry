@@ -688,6 +688,8 @@ export function createBlobRoutes(): Hono {
     // Get blob size
     const size = await storage.getBlobSize(digest);
     if (size === null) {
+      // Cancel stream before returning error to prevent file handle leak
+      await stream.cancel();
       return blobUnknown(digest);
     }
 
@@ -701,6 +703,8 @@ export function createBlobRoutes(): Hono {
 
         // Validate range
         if (start >= size || start < 0 || end < start || end >= size) {
+          // Cancel stream before returning error to prevent file handle leak
+          await stream.cancel();
           c.header("Content-Range", `bytes */${size}`);
           return c.body("Requested range not satisfiable", 416);
         }
@@ -716,6 +720,8 @@ export function createBlobRoutes(): Hono {
         while (bytesRead < start) {
           const { done, value } = await reader.read();
           if (done) {
+            reader.releaseLock();
+            await stream.cancel();
             return c.body("Unexpected end of stream", 500);
           }
           const toSkip = Math.min(value.length, start - bytesRead);
@@ -726,28 +732,44 @@ export function createBlobRoutes(): Hono {
             // Create a new stream with the remaining data from this chunk
             const partialChunk = value.slice(toSkip);
             let remainingBytes = contentLength;
+            let lockReleased = false;
             
             const rangeStream = new ReadableStream({
               async start(controller) {
-                // Enqueue the partial chunk first
-                if (remainingBytes > 0) {
-                  const toEnqueue = partialChunk.slice(0, Math.min(partialChunk.length, remainingBytes));
-                  controller.enqueue(toEnqueue);
-                  remainingBytes -= toEnqueue.length;
-                }
-                
-                // Continue reading from the original stream
-                while (remainingBytes > 0) {
-                  const { done, value } = await reader.read();
-                  if (done) {
-                    controller.close();
-                    return;
+                try {
+                  // Enqueue the partial chunk first
+                  if (remainingBytes > 0) {
+                    const toEnqueue = partialChunk.slice(0, Math.min(partialChunk.length, remainingBytes));
+                    controller.enqueue(toEnqueue);
+                    remainingBytes -= toEnqueue.length;
                   }
-                  const toEnqueue = value.slice(0, Math.min(value.length, remainingBytes));
-                  controller.enqueue(toEnqueue);
-                  remainingBytes -= toEnqueue.length;
+                  
+                  // Continue reading from the original stream
+                  while (remainingBytes > 0) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                      break;
+                    }
+                    const toEnqueue = value.slice(0, Math.min(value.length, remainingBytes));
+                    controller.enqueue(toEnqueue);
+                    remainingBytes -= toEnqueue.length;
+                  }
+                } finally {
+                  // Always release the lock if not already released
+                  if (!lockReleased) {
+                    lockReleased = true;
+                    reader.releaseLock();
+                  }
+                  controller.close();
                 }
-                controller.close();
+              },
+              async cancel() {
+                // Release the reader first, then cancel the underlying stream
+                if (!lockReleased) {
+                  lockReleased = true;
+                  reader.releaseLock();
+                }
+                await stream.cancel();
               },
             });
             
@@ -761,19 +783,36 @@ export function createBlobRoutes(): Hono {
         
         // Create limited stream for the range
         let remainingBytes = contentLength;
+        let lockReleased = false;
+        
         const rangeStream = new ReadableStream({
           async start(controller) {
-            while (remainingBytes > 0) {
-              const { done, value } = await reader.read();
-              if (done) {
-                controller.close();
-                return;
+            try {
+              while (remainingBytes > 0) {
+                const { done, value } = await reader.read();
+                if (done) {
+                  break;
+                }
+                const toEnqueue = value.slice(0, Math.min(value.length, remainingBytes));
+                controller.enqueue(toEnqueue);
+                remainingBytes -= toEnqueue.length;
               }
-              const toEnqueue = value.slice(0, Math.min(value.length, remainingBytes));
-              controller.enqueue(toEnqueue);
-              remainingBytes -= toEnqueue.length;
+            } finally {
+              // Always release the lock if not already released
+              if (!lockReleased) {
+                lockReleased = true;
+                reader.releaseLock();
+              }
+              controller.close();
             }
-            controller.close();
+          },
+          async cancel() {
+            // Release the reader first, then cancel the underlying stream
+            if (!lockReleased) {
+              lockReleased = true;
+              reader.releaseLock();
+            }
+            await stream.cancel();
           },
         });
 
