@@ -5,10 +5,11 @@
     "jsr:@hono/hono@4.11.7": "4.11.7",
     "jsr:@std/assert@*": "1.0.18",
     "jsr:@std/assert@1": "1.0.18",
+    "jsr:@std/encoding@1": "1.0.10",
+    "jsr:@std/encoding@^1.0.10": "1.0.10",
     "jsr:@std/fs@^1.0.22": "1.0.22",
     "jsr:@std/internal@^1.0.12": "1.0.12",
-    "jsr:@std/path@^1.1.4": "1.1.4",
-    "npm:hono@4": "4.10.6"
+    "jsr:@std/path@^1.1.4": "1.1.4"
   },
   "jsr": {
     "@hono/hono@4.11.7": {
@@ -19,6 +20,9 @@
       "dependencies": [
         "jsr:@std/internal"
       ]
+    },
+    "@std/encoding@1.0.10": {
+      "integrity": "8783c6384a2d13abd5e9e87a7ae0520a30e9f56aeeaa3bdf910a3eaaf5c811a1"
     },
     "@std/fs@1.0.22": {
       "integrity": "de0f277a58a867147a8a01bc1b181d0dfa80bfddba8c9cf2bacd6747bcec9308",
@@ -35,11 +39,6 @@
       "dependencies": [
         "jsr:@std/internal"
       ]
-    }
-  },
-  "npm": {
-    "hono@4.10.6": {
-      "integrity": "sha512-BIdolzGpDO9MQ4nu3AUuDwHZZ+KViNm+EZ75Ae55eMXMqLVhDFqEMXxtUe9Qh8hjL+pIna/frs2j6Y2yD5Ua/g=="
     }
   },
   "remote": {
@@ -142,7 +141,7 @@
     "dependencies": [
       "jsr:@hono/hono@4.11.7",
       "jsr:@std/assert@1",
-      "jsr:@std/encoding@^1.0.11",
+      "jsr:@std/encoding@^1.0.10",
       "jsr:@std/fs@^1.0.22",
       "jsr:@std/path@^1.1.4"
     ]
