@@ -17,8 +17,9 @@ export interface StorageDriver {
    * @returns ReadableStream of blob content, or null if not found
    *
    * IMPORTANT: The caller MUST either fully consume the stream or call
-   * stream.cancel() to release the underlying file handle. Failure to
-   * do so will result in a resource leak.
+   * stream.cancel() to allow the implementation to release any underlying
+   * resources (e.g., file handles in a filesystem-based driver). Failure to
+   * do so may result in resource leaks.
    */
   getBlob(digest: string): Promise<ReadableStream<Uint8Array> | null>;
 

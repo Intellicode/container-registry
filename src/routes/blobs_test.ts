@@ -380,6 +380,8 @@ Deno.test("GET /v2/<name>/blobs/<digest> - invalid repository name", async () =>
 
 // Story 012: Chunked Upload Tests
 
+// Note: sanitizeResources disabled for PATCH tests because previous blob streaming
+// tests may leave file handles that get closed during body consumption in these tests
 Deno.test({
   name: "PATCH /v2/<name>/blobs/uploads/<uuid> - upload first chunk",
   sanitizeResources: false,
@@ -401,6 +403,10 @@ Deno.test({
       );
       const initiateRes = await app.fetch(initiateReq);
       assertEquals(initiateRes.status, 202);
+      // Consume response body to release resources
+      if (initiateRes.body) {
+        await initiateRes.body.cancel();
+      }
 
       const uploadUrl = initiateRes.headers.get("Location")?.replace(
         /^\/v2/,
@@ -428,6 +434,10 @@ Deno.test({
       );
       assertEquals(patchRes.headers.get("Docker-Upload-UUID"), uuid);
       assertEquals(patchRes.headers.get("Range"), "0-5");
+      // Consume response body to release resources
+      if (patchRes.body) {
+        await patchRes.body.cancel();
+      }
     } finally {
       resetConfig();
       await cleanupTestDir(testDir);
@@ -456,6 +466,10 @@ Deno.test({
       );
       const initiateRes = await app.fetch(initiateReq);
       assertEquals(initiateRes.status, 202);
+      // Consume response body to release resources
+      if (initiateRes.body) {
+        await initiateRes.body.cancel();
+      }
       const uploadUrl = initiateRes.headers.get("Location")?.replace(
         /^\/v2/,
         "",
@@ -473,6 +487,10 @@ Deno.test({
       const patch1Res = await app.fetch(patch1Req);
       assertEquals(patch1Res.status, 202);
       assertEquals(patch1Res.headers.get("Range"), "0-5");
+      // Consume response body to release resources
+      if (patch1Res.body) {
+        await patch1Res.body.cancel();
+      }
 
       // Upload second chunk
       const chunk2 = new TextEncoder().encode("World!");
@@ -486,6 +504,10 @@ Deno.test({
       const patch2Res = await app.fetch(patch2Req);
       assertEquals(patch2Res.status, 202);
       assertEquals(patch2Res.headers.get("Range"), "0-11");
+      // Consume response body to release resources
+      if (patch2Res.body) {
+        await patch2Res.body.cancel();
+      }
     } finally {
       resetConfig();
       await cleanupTestDir(testDir);

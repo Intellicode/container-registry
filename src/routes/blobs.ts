@@ -469,47 +469,57 @@ export function createBlobRoutes(): Hono {
         const existingFile = await Deno.open(dataPath, { read: true });
         openedFile = existingFile;
 
-        // Track whether streams have been fully consumed or cancelled
+        // Track stream state and readers outside pull() for proper backpressure
         let existingStreamConsumed = false;
         let bodyStreamConsumed = false;
+        let existingReader: ReadableStreamDefaultReader<Uint8Array> | null =
+          null;
+        let bodyReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
         // Create a stream that reads existing data first, then the body
+        // Each pull() reads one chunk to respect backpressure
         finalStream = new ReadableStream({
           async pull(controller) {
-            // First, read all existing data
+            // First, read from existing file one chunk at a time
             if (!existingStreamConsumed) {
-              const existingReader = existingFile.readable.getReader();
-              try {
-                while (true) {
-                  const { done, value } = await existingReader.read();
-                  if (done) break;
-                  controller.enqueue(value);
-                }
-              } finally {
+              if (!existingReader) {
+                existingReader = existingFile.readable.getReader();
+              }
+              const { done, value } = await existingReader.read();
+              if (done) {
                 existingReader.releaseLock();
+                existingReader = null;
+                existingStreamConsumed = true;
+              } else {
+                controller.enqueue(value);
+                return; // Wait for next pull
               }
-              existingStreamConsumed = true;
             }
 
-            // Then, read all body data
+            // Then, read from body one chunk at a time
             if (!bodyStreamConsumed && body) {
-              const bodyReader = body.getReader();
-              try {
-                while (true) {
-                  const { done, value } = await bodyReader.read();
-                  if (done) break;
-                  controller.enqueue(value);
-                }
-              } finally {
-                bodyReader.releaseLock();
+              if (!bodyReader) {
+                bodyReader = body.getReader();
               }
-              bodyStreamConsumed = true;
+              const { done, value } = await bodyReader.read();
+              if (done) {
+                bodyReader.releaseLock();
+                bodyReader = null;
+                bodyStreamConsumed = true;
+              } else {
+                controller.enqueue(value);
+                return; // Wait for next pull
+              }
             }
 
+            // Both streams consumed, close the combined stream
             controller.close();
           },
           cancel() {
             // Ensure file handle is closed if stream is cancelled
+            if (existingReader) {
+              existingReader.releaseLock();
+            }
             if (!existingStreamConsumed) {
               try {
                 existingFile.close();
@@ -518,6 +528,9 @@ export function createBlobRoutes(): Hono {
               }
             }
             // Cancel body stream if not consumed
+            if (bodyReader) {
+              bodyReader.releaseLock();
+            }
             if (!bodyStreamConsumed && body) {
               body.cancel().catch(() => {});
             }
@@ -538,13 +551,11 @@ export function createBlobRoutes(): Hono {
         return digestInvalid(digest, "request body is empty");
       }
 
-      // Create digest stream to compute hash while streaming data
-      // This approach uses stream tee'ing to simultaneously:
-      // 1. Calculate the digest (without re-reading from disk)
-      // 2. Write to temporary staging file
-      // 3. Stream to final storage location
-      // This reduces memory pressure by avoiding buffering the entire blob,
-      // and eliminates redundant disk I/O from re-reading the uploaded file.
+      // Create digest stream to compute hash while streaming data.
+      // This uses a 2-way tee to process the stream in parallel:
+      // 1. Calculate the digest via TransformStream
+      // 2. Stream to storage (putBlob handles atomic temp-file writes internally)
+      // This avoids re-reading data from disk for digest verification.
       const { stream: digestStream, digest: digestPromise } =
         createDigestStream(
           parsedDigest.algorithm,
@@ -598,13 +609,13 @@ export function createBlobRoutes(): Hono {
       return c.body(null, 201);
     } catch (error) {
       // Clean up resources on error
-      // Cancel any unconsummed tee'd stream to prevent resource leaks
+      // Cancel any unconsumed tee'd stream to prevent resource leaks
       if (digestBranch) {
-        try {
-          await digestBranch.cancel();
-        } catch {
-          // Ignore cancel errors
-        }
+        // Attach a catch handler so cancellation-triggered rejections
+        // (for example from a background pipeTo task) are not unhandled.
+        digestBranch.cancel().catch(() => {
+          // Ignore cancel errors during cleanup
+        });
       }
       // Close file handle if stream wasn't fully consumed
       if (openedFile) {
