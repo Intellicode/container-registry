@@ -448,6 +448,10 @@ export function createBlobRoutes(): Hono {
     );
     const hasExistingData = existingSize > 0;
 
+    // Track resources for cleanup on error (declared outside try block for catch access)
+    let openedFile: Deno.FsFile | null = null;
+    let digestBranch: ReadableStream<Uint8Array> | null = null;
+
     try {
       // Parse digest to get the algorithm
       const parsedDigest = parseDigest(digest);
@@ -463,24 +467,32 @@ export function createBlobRoutes(): Hono {
         // Need to combine existing data file with incoming body
         const dataPath = getUploadDataPath(uuid, config.storage.rootDirectory);
         const existingFile = await Deno.open(dataPath, { read: true });
+        openedFile = existingFile;
+
+        // Track whether streams have been fully consumed or cancelled
+        let existingStreamConsumed = false;
+        let bodyStreamConsumed = false;
 
         // Create a stream that reads existing data first, then the body
         finalStream = new ReadableStream({
-          async start(controller) {
-            // Read and enqueue existing data
-            const existingReader = existingFile.readable.getReader();
-            try {
-              while (true) {
-                const { done, value } = await existingReader.read();
-                if (done) break;
-                controller.enqueue(value);
+          async pull(controller) {
+            // First, read all existing data
+            if (!existingStreamConsumed) {
+              const existingReader = existingFile.readable.getReader();
+              try {
+                while (true) {
+                  const { done, value } = await existingReader.read();
+                  if (done) break;
+                  controller.enqueue(value);
+                }
+              } finally {
+                existingReader.releaseLock();
               }
-            } finally {
-              existingReader.releaseLock();
+              existingStreamConsumed = true;
             }
 
-            // Read and enqueue new body data
-            if (body) {
+            // Then, read all body data
+            if (!bodyStreamConsumed && body) {
               const bodyReader = body.getReader();
               try {
                 while (true) {
@@ -491,15 +503,31 @@ export function createBlobRoutes(): Hono {
               } finally {
                 bodyReader.releaseLock();
               }
+              bodyStreamConsumed = true;
             }
 
             controller.close();
+          },
+          cancel() {
+            // Ensure file handle is closed if stream is cancelled
+            if (!existingStreamConsumed) {
+              try {
+                existingFile.close();
+              } catch {
+                // File may already be closed
+              }
+            }
+            // Cancel body stream if not consumed
+            if (!bodyStreamConsumed && body) {
+              body.cancel().catch(() => {});
+            }
           },
         });
       } else if (hasExistingData && !body) {
         // Case 2: Has existing data from PATCH, no body in PUT (all data already uploaded)
         const dataPath = getUploadDataPath(uuid, config.storage.rootDirectory);
         const existingFile = await Deno.open(dataPath, { read: true });
+        openedFile = existingFile;
         finalStream = existingFile.readable;
       } else if (!hasExistingData && body) {
         // Case 3: No existing data, body in PUT (monolithic upload)
@@ -522,10 +550,11 @@ export function createBlobRoutes(): Hono {
           parsedDigest.algorithm,
         );
 
-      // Create a three-way tee to process the stream in parallel
+      // Create a two-way tee to process the stream in parallel
       // Branch 1: Digest calculation
       // Branch 2: Storage (will be consumed by putBlob)
-      const [digestBranch, storageBranch] = finalStream.tee();
+      let storageBranch: ReadableStream<Uint8Array>;
+      [digestBranch, storageBranch] = finalStream.tee();
 
       // Start digest calculation in background
       const computeDigestTask = digestBranch
@@ -538,6 +567,8 @@ export function createBlobRoutes(): Hono {
 
       // Wait for digest calculation to complete
       await computeDigestTask;
+      // Mark digestBranch as consumed so catch block doesn't try to cancel it
+      digestBranch = null;
       const computedDigest = await digestPromise;
 
       // Verify digest matches
@@ -566,7 +597,23 @@ export function createBlobRoutes(): Hono {
 
       return c.body(null, 201);
     } catch (error) {
-      // Clean up on error
+      // Clean up resources on error
+      // Cancel any unconsummed tee'd stream to prevent resource leaks
+      if (digestBranch) {
+        try {
+          await digestBranch.cancel();
+        } catch {
+          // Ignore cancel errors
+        }
+      }
+      // Close file handle if stream wasn't fully consumed
+      if (openedFile) {
+        try {
+          openedFile.close();
+        } catch {
+          // File may already be closed via readable consumption
+        }
+      }
       await cleanupUpload(uuid, config.storage.rootDirectory);
       throw error;
     }
