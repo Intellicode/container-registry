@@ -664,48 +664,8 @@ export function createBlobRoutes(): Hono {
   });
 
   /**
-   * HEAD /v2/<name>/blobs/<digest>
-   * Check if a blob exists.
-   */
-  blobs.on("HEAD", "/:name{.+}/blobs/:digest", async (c: Context) => {
-    const name = c.req.param("name");
-    const digest = c.req.param("digest");
-
-    // Validate repository name
-    if (!validateRepositoryName(name)) {
-      return nameInvalid(
-        name,
-        REPOSITORY_NAME_ERROR_MESSAGE,
-      );
-    }
-
-    // Validate digest format
-    if (!isValidDigest(digest)) {
-      return digestInvalid(digest, "invalid digest format");
-    }
-
-    // Check if blob exists in storage
-    const exists = await storage.hasBlob(digest);
-    if (!exists) {
-      return blobUnknown(digest);
-    }
-
-    // Get blob size
-    const size = await storage.getBlobSize(digest);
-    if (size === null) {
-      return blobUnknown(digest);
-    }
-
-    // Return 200 OK with headers
-    c.header("Content-Length", size.toString());
-    c.header("Docker-Content-Digest", digest);
-
-    return c.body(null, 200);
-  });
-
-  /**
    * GET /v2/<name>/blobs/<digest>
-   * Download a blob.
+   * Download a blob (also handles HEAD requests).
    */
   blobs.get("/:name{.+}/blobs/:digest", async (c: Context) => {
     const name = c.req.param("name");
@@ -723,6 +683,24 @@ export function createBlobRoutes(): Hono {
     // Validate digest format
     if (!isValidDigest(digest)) {
       return digestInvalid(digest, "invalid digest format");
+    }
+
+    // Handle HEAD requests without opening the blob file.
+    // Hono routes HEAD requests to GET handlers, so we need to handle this explicitly
+    // to avoid opening a file stream that would be discarded (causing resource leaks).
+    if (c.req.method === "HEAD") {
+      const exists = await storage.hasBlob(digest);
+      if (!exists) {
+        return blobUnknown(digest);
+      }
+      const size = await storage.getBlobSize(digest);
+      if (size === null) {
+        return blobUnknown(digest);
+      }
+      c.header("Content-Length", size.toString());
+      c.header("Content-Type", "application/octet-stream");
+      c.header("Docker-Content-Digest", digest);
+      return c.body(null, 200);
     }
 
     // Get blob stream
