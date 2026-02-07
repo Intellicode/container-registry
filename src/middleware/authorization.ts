@@ -8,6 +8,7 @@ import type {
   AccessControlService,
   Permission,
 } from "../services/access-control.ts";
+import { AuthService } from "../services/auth.ts";
 
 /**
  * Creates authorization middleware that checks repository-level permissions.
@@ -117,19 +118,12 @@ function getUsernameFromContext(c: Context): string | undefined {
     return tokenPayload.sub as string;
   }
 
-  // Try to get username from basic auth
+  // Try to get username from basic auth using shared AuthService
   const authHeader = c.req.header("Authorization");
-  if (authHeader?.startsWith("Basic ")) {
-    try {
-      const base64Credentials = authHeader.slice(6);
-      const credentials = atob(base64Credentials);
-      const colonIndex = credentials.indexOf(":");
-      if (colonIndex !== -1) {
-        return credentials.slice(0, colonIndex);
-      }
-    } catch {
-      // Failed to parse basic auth, treat as no username
-      return undefined;
+  if (authHeader) {
+    const credentials = AuthService.parseBasicAuth(authHeader);
+    if (credentials) {
+      return credentials.username;
     }
   }
 

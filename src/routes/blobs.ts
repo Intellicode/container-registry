@@ -20,47 +20,11 @@ import {
   digestInvalid,
   nameInvalid,
 } from "../utils/errors.ts";
-
-/**
- * Validates repository name according to OCI distribution spec.
- * Centralizes validation logic to match FilesystemStorage requirements.
- * Format: [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*
- */
-function validateRepositoryName(name: string): boolean {
-  if (!name) {
-    return false;
-  }
-
-  const components = name.split("/");
-  for (const component of components) {
-    if (!component) {
-      return false;
-    }
-    // Each component must match [a-z0-9]+([._-][a-z0-9]+)*
-    if (!/^[a-z0-9]+([._-][a-z0-9]+)*$/.test(component)) {
-      return false;
-    }
-    // Reject path traversal
-    if (component === "." || component === "..") {
-      return false;
-    }
-  }
-  // Additional safety: ensure no backslashes or other path separators
-  if (name.includes("\\") || name.includes("\0")) {
-    return false;
-  }
-  return true;
-}
-
-/**
- * Validates UUID format to prevent path traversal attacks.
- * UUID must be a valid v4 UUID format.
- */
-function isValidUUID(uuid: string): boolean {
-  // UUID v4 format: 8-4-4-4-12 hex digits
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    .test(uuid);
-}
+import {
+  isValidUUID,
+  REPOSITORY_NAME_ERROR_MESSAGE,
+  validateRepositoryName,
+} from "../utils/validation.ts";
 
 /**
  * Get the path for upload session storage.
@@ -241,10 +205,7 @@ export function createBlobRoutes(): Hono {
 
     // Validate repository name
     if (!validateRepositoryName(name)) {
-      return nameInvalid(
-        name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
-      );
+      return nameInvalid(name, REPOSITORY_NAME_ERROR_MESSAGE);
     }
 
     // Handle blob mount request
@@ -323,10 +284,7 @@ export function createBlobRoutes(): Hono {
 
     // Validate repository name
     if (!validateRepositoryName(name)) {
-      return nameInvalid(
-        name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
-      );
+      return nameInvalid(name, REPOSITORY_NAME_ERROR_MESSAGE);
     }
 
     // Check if upload session exists
@@ -373,7 +331,7 @@ export function createBlobRoutes(): Hono {
     if (!validateRepositoryName(name)) {
       return nameInvalid(
         name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+        REPOSITORY_NAME_ERROR_MESSAGE,
       );
     }
 
@@ -462,7 +420,7 @@ export function createBlobRoutes(): Hono {
     if (!validateRepositoryName(name)) {
       return nameInvalid(
         name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+        REPOSITORY_NAME_ERROR_MESSAGE,
       );
     }
 
@@ -631,7 +589,7 @@ export function createBlobRoutes(): Hono {
     if (!validateRepositoryName(name)) {
       return nameInvalid(
         name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+        REPOSITORY_NAME_ERROR_MESSAGE,
       );
     }
 
@@ -659,7 +617,7 @@ export function createBlobRoutes(): Hono {
     if (!validateRepositoryName(name)) {
       return nameInvalid(
         name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+        REPOSITORY_NAME_ERROR_MESSAGE,
       );
     }
 
@@ -700,7 +658,7 @@ export function createBlobRoutes(): Hono {
     if (!validateRepositoryName(name)) {
       return nameInvalid(
         name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+        REPOSITORY_NAME_ERROR_MESSAGE,
       );
     }
 
@@ -883,7 +841,7 @@ export function createBlobRoutes(): Hono {
     if (!validateRepositoryName(name)) {
       return nameInvalid(
         name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+        REPOSITORY_NAME_ERROR_MESSAGE,
       );
     }
 
