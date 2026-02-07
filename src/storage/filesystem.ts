@@ -1,5 +1,5 @@
-import { ensureDir } from "@std/fs";
-import { join, resolve } from "@std/path";
+import { ensureDir, expandGlob } from "@std/fs";
+import { dirname, join, relative, resolve } from "@std/path";
 import type { StorageDriver } from "./interface.ts";
 
 /**
@@ -336,9 +336,7 @@ export class FilesystemStorage implements StorageDriver {
     await ensureDir(dir);
 
     // Write to temporary file first for atomic operation
-    const tempPath = `${path}.tmp.${Date.now()}.${
-      Math.random().toString(36).substring(2, 15)
-    }`;
+    const tempPath = `${path}.tmp.${Date.now()}.${crypto.randomUUID()}`;
 
     try {
       const file = await Deno.open(tempPath, {
@@ -629,7 +627,24 @@ export class FilesystemStorage implements StorageDriver {
       const repositoriesPath = join(this.rootPath, "repositories");
       const repositories: string[] = [];
 
-      await this.scanRepositories(repositoriesPath, "", repositories);
+      // Use expandGlob to find all _manifests directories
+      // The parent directory of _manifests is the repository root
+      // We use glob to avoid manual recursion and standard library features
+      const globPattern = join(repositoriesPath, "**", "_manifests");
+
+      for await (
+        const entry of expandGlob(globPattern, {
+          includeDirs: true,
+        })
+      ) {
+        if (!entry.isDirectory) continue;
+        const repoPath = dirname(entry.path);
+        // Get repository name relative to repositories root
+        const repoName = relative(repositoriesPath, repoPath);
+        // Ensure forward slashes for OCI compatibility
+        const normalizedRepoName = repoName.replace(/\\/g, "/");
+        repositories.push(normalizedRepoName);
+      }
 
       // Sort alphabetically (lexicographic)
       const sortedRepos = repositories.sort();
@@ -677,16 +692,21 @@ export class FilesystemStorage implements StorageDriver {
       const repositoriesPath = join(this.rootPath, "repositories");
 
       // Recursively scan for layer links to this blob
-      await this.scanBlobReferences(
+      // Search for: repositories/**/_layers/<algo>/<hash>/link
+      const globPattern = join(
         repositoriesPath,
-        "",
-        digest,
+        "**",
+        "_layers",
         algorithm,
         hash,
-        (found) => {
-          if (found) count++;
-        },
+        "link",
       );
+
+      for await (const entry of expandGlob(globPattern)) {
+        if (entry.isFile) {
+          count++;
+        }
+      }
     } catch (error) {
       if (!(error instanceof Deno.errors.NotFound)) {
         throw error;
@@ -694,109 +714,5 @@ export class FilesystemStorage implements StorageDriver {
     }
 
     return count;
-  }
-
-  /**
-   * Recursively scan for references to a specific blob
-   */
-  private async scanBlobReferences(
-    basePath: string,
-    currentPath: string,
-    digest: string,
-    algorithm: string,
-    hash: string,
-    callback: (found: boolean) => void,
-  ): Promise<void> {
-    const fullPath = currentPath ? join(basePath, currentPath) : basePath;
-
-    try {
-      for await (const entry of Deno.readDir(fullPath)) {
-        if (!entry.isDirectory) continue;
-
-        // Check if this is a _layers directory
-        if (entry.name === "_layers" && currentPath) {
-          // Check if this repository has a link to our blob
-          const layerLinkPath = join(
-            this.rootPath,
-            "repositories",
-            currentPath,
-            "_layers",
-            algorithm,
-            hash,
-            "link",
-          );
-          try {
-            const stat = await Deno.stat(layerLinkPath);
-            if (stat.isFile) {
-              callback(true);
-            }
-          } catch (error) {
-            if (!(error instanceof Deno.errors.NotFound)) {
-              throw error;
-            }
-          }
-          continue;
-        }
-
-        // Skip other metadata directories
-        if (entry.name.startsWith("_")) {
-          continue;
-        }
-
-        // Recursively scan subdirectories
-        const newPath = currentPath
-          ? `${currentPath}/${entry.name}`
-          : entry.name;
-        await this.scanBlobReferences(
-          basePath,
-          newPath,
-          digest,
-          algorithm,
-          hash,
-          callback,
-        );
-      }
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) {
-        throw error;
-      }
-    }
-  }
-
-  /**
-   * Recursively scan for repositories
-   * A directory is considered a repository if it contains a _manifests directory
-   */
-  private async scanRepositories(
-    basePath: string,
-    currentPath: string,
-    results: string[],
-  ): Promise<void> {
-    const fullPath = currentPath ? join(basePath, currentPath) : basePath;
-
-    try {
-      for await (const entry of Deno.readDir(fullPath)) {
-        if (!entry.isDirectory) continue;
-
-        // Skip metadata directories
-        if (entry.name.startsWith("_")) {
-          // Check if this is a repository (has _manifests)
-          if (entry.name === "_manifests" && currentPath) {
-            results.push(currentPath);
-          }
-          continue;
-        }
-
-        // Recursively scan subdirectories
-        const newPath = currentPath
-          ? `${currentPath}/${entry.name}`
-          : entry.name;
-        await this.scanRepositories(basePath, newPath, results);
-      }
-    } catch (error) {
-      if (!(error instanceof Deno.errors.NotFound)) {
-        throw error;
-      }
-    }
   }
 }

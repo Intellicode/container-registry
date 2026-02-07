@@ -1,3 +1,5 @@
+import { resolve } from "@std/path";
+
 /**
  * Configuration management for the container registry.
  * Loads configuration from environment variables with sensible defaults.
@@ -77,7 +79,7 @@ export function loadConfig(): RegistryConfig {
       port: parsePort(Deno.env.get("REGISTRY_PORT"), 15000),
     },
     storage: {
-      rootDirectory: Deno.env.get("REGISTRY_STORAGE_PATH") ?? "./data",
+      rootDirectory: resolve(Deno.env.get("REGISTRY_STORAGE_PATH") ?? "./data"),
       uploadTimeout: parsePositiveInt(
         Deno.env.get("REGISTRY_UPLOAD_TIMEOUT"),
         3600, // 1 hour default
@@ -189,8 +191,10 @@ function parseAccessControlConfig(): AccessControlConfig {
     };
   }
 
+  const resolvedConfigPath = resolve(configPath);
+
   try {
-    const configContent = Deno.readTextFileSync(configPath);
+    const configContent = Deno.readTextFileSync(resolvedConfigPath);
     const config = JSON.parse(configContent);
 
     return {
@@ -202,7 +206,7 @@ function parseAccessControlConfig(): AccessControlConfig {
   } catch (error) {
     console.error(`Failed to load access control config: ${error}`);
     throw new Error(
-      `Failed to load access control config from ${configPath}: ${
+      `Failed to load access control config from ${resolvedConfigPath}: ${
         error instanceof Error ? error.message : String(error)
       }`,
     );

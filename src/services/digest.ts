@@ -5,6 +5,9 @@
  * using SHA-256 (default) and SHA-512 algorithms for content-addressable storage.
  */
 
+import { encodeHex } from "@std/encoding/hex";
+import { crypto as stdCrypto } from "@std/crypto";
+
 /**
  * Parsed digest structure following OCI spec
  */
@@ -29,69 +32,29 @@ export async function calculateDigest(
   content: ReadableStream<Uint8Array> | Uint8Array | string,
   algorithm: "sha256" | "sha512" = "sha256",
 ): Promise<string> {
-  let data: Uint8Array;
+  const cryptoAlgorithm = algorithm === "sha256" ? "SHA-256" : "SHA-512";
+  let hashBuffer: ArrayBuffer;
 
   if (content instanceof ReadableStream) {
-    // Note: Buffers stream content in memory. Web Crypto API requires full data upfront.
-    // For true streaming with large files, consider incremental hash implementations.
-    data = await streamToUint8Array(content);
+    hashBuffer = await stdCrypto.subtle.digest(
+      cryptoAlgorithm,
+      content as ReadableStream<Uint8Array<ArrayBuffer>>,
+    );
   } else if (typeof content === "string") {
-    // Convert string to Uint8Array
-    data = new TextEncoder().encode(content);
+    const data = new TextEncoder().encode(content);
+    hashBuffer = await stdCrypto.subtle.digest(
+      cryptoAlgorithm,
+      data as Uint8Array<ArrayBuffer>,
+    );
   } else {
-    // Ensure Uint8Array is backed by ArrayBuffer (not SharedArrayBuffer) for Web Crypto API
-    data = new Uint8Array(content);
+    hashBuffer = await stdCrypto.subtle.digest(
+      cryptoAlgorithm,
+      content as Uint8Array<ArrayBuffer>,
+    );
   }
 
-  // Use Web Crypto API for hashing
-  const cryptoAlgorithm = algorithm === "sha256" ? "SHA-256" : "SHA-512";
-  const hashBuffer = await crypto.subtle.digest(
-    cryptoAlgorithm,
-    data as BufferSource,
-  );
-  const hashArray = new Uint8Array(hashBuffer);
-  const hashHex = Array.from(hashArray)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
+  const hashHex = encodeHex(new Uint8Array(hashBuffer));
   return `${algorithm}:${hashHex}`;
-}
-
-/**
- * Convert ReadableStream to Uint8Array efficiently
- *
- * @param stream - Input stream
- * @returns Complete content as Uint8Array
- */
-async function streamToUint8Array(
-  stream: ReadableStream<Uint8Array>,
-): Promise<Uint8Array> {
-  const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalLength = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      // Copy the chunk to ensure it's backed by ArrayBuffer
-      chunks.push(new Uint8Array(value));
-      totalLength += value.length;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  // Combine all chunks into single Uint8Array with proper ArrayBuffer
-  const buffer = new ArrayBuffer(totalLength);
-  const result = new Uint8Array(buffer);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return result;
 }
 
 /**
@@ -191,9 +154,6 @@ function constantTimeEqual(a: string, b: string): boolean {
 
 /**
  * Create a TransformStream that calculates digest while passing through data
- * Buffers chunks in memory to calculate digest when stream completes.
- * Note: Due to Web Crypto API limitations, this still requires buffering all chunks.
- * However, when used with stream tee'ing, it avoids re-reading data from disk.
  *
  * @param algorithm - Hash algorithm to use (defaults to "sha256")
  * @returns Object containing the transform stream and a promise for the digest
@@ -204,43 +164,24 @@ export function createDigestStream(
   stream: TransformStream<Uint8Array, Uint8Array>;
   digest: Promise<string>;
 } {
-  const chunks: Uint8Array[] = [];
-  let totalLength = 0;
-  let resolveDigest: (digest: string) => void;
+  const ts = new TransformStream<Uint8Array, Uint8Array>();
+  const [localStream, outputStream] = ts.readable.tee();
+  const cryptoAlgorithm = algorithm === "sha256" ? "SHA-256" : "SHA-512";
 
-  const digestPromise = new Promise<string>((resolve) => {
-    resolveDigest = resolve;
-  });
+  const digestPromise = stdCrypto.subtle.digest(
+    cryptoAlgorithm,
+    localStream as ReadableStream<Uint8Array<ArrayBuffer>>,
+  )
+    .then((hashBuffer: ArrayBuffer) => {
+      const hashHex = encodeHex(new Uint8Array(hashBuffer));
+      return `${algorithm}:${hashHex}`;
+    });
 
-  const stream = new TransformStream({
-    transform(chunk, controller) {
-      // Store chunk for digest calculation
-      chunks.push(new Uint8Array(chunk));
-      totalLength += chunk.length;
-      // Pass through unchanged
-      controller.enqueue(chunk);
+  return {
+    stream: {
+      writable: ts.writable,
+      readable: outputStream,
     },
-    async flush() {
-      // Calculate digest when stream completes
-      const buffer = new ArrayBuffer(totalLength);
-      const combined = new Uint8Array(buffer);
-      let offset = 0;
-      for (const chunk of chunks) {
-        combined.set(chunk, offset);
-        offset += chunk.length;
-      }
-
-      // Calculate digest using specified algorithm
-      const cryptoAlgorithm = algorithm === "sha256" ? "SHA-256" : "SHA-512";
-      const hashBuffer = await crypto.subtle.digest(cryptoAlgorithm, combined);
-      const hashArray = new Uint8Array(hashBuffer);
-      const hashHex = Array.from(hashArray)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-
-      resolveDigest(`${algorithm}:${hashHex}`);
-    },
-  });
-
-  return { stream, digest: digestPromise };
+    digest: digestPromise,
+  };
 }

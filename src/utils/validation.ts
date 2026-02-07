@@ -1,3 +1,5 @@
+import { validate } from "@std/uuid";
+
 /**
  * Shared validation utilities for OCI Distribution Specification compliance.
  */
@@ -7,13 +9,6 @@
  * Each component must match [a-z0-9]+([._-][a-z0-9]+)*
  */
 const REPOSITORY_COMPONENT_PATTERN = /^[a-z0-9]+([._-][a-z0-9]+)*$/;
-
-/**
- * UUID v4 format validation pattern.
- * Format: 8-4-4-4-12 hex digits with version 4 indicator.
- */
-const UUID_V4_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Error message for invalid repository name.
@@ -58,13 +53,13 @@ export function validateRepositoryName(name: string): boolean {
 
 /**
  * Validates UUID format to prevent path traversal attacks.
- * UUID must be a valid v4 UUID format.
+ * UUID must be a valid UUID format.
  *
  * @param uuid - UUID string to validate
- * @returns true if valid UUID v4 format, false otherwise
+ * @returns true if valid UUID format, false otherwise
  */
 export function isValidUUID(uuid: string): boolean {
-  return UUID_V4_PATTERN.test(uuid);
+  return validate(uuid);
 }
 
 /**

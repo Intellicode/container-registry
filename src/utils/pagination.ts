@@ -59,7 +59,11 @@ export function buildPaginationLink(
   limit: number,
   lastItem: string,
 ): string {
-  const linkUrl = `${basePath}?n=${limit}&last=${encodeURIComponent(lastItem)}`;
+  const params = new URLSearchParams({
+    n: limit.toString(),
+    last: lastItem,
+  });
+  const linkUrl = `${basePath}?${params.toString()}`;
   return `<${linkUrl}>; rel="next"`;
 }
 
@@ -81,7 +85,10 @@ export interface PaginatedResult<T> {
  * @param limit - Page limit
  * @returns Paginated result with items trimmed and hasMore flag
  */
-export function applyPagination<T>(items: T[], limit: number): PaginatedResult<T> {
+export function applyPagination<T>(
+  items: T[],
+  limit: number,
+): PaginatedResult<T> {
   const hasMore = items.length > limit;
   const paginatedItems = hasMore ? items.slice(0, limit) : items;
 

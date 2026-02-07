@@ -4,6 +4,7 @@
  */
 
 import { join } from "@std/path";
+import { expandGlob } from "@std/fs";
 
 /**
  * Configuration for the upload cleanup service.
@@ -118,26 +119,20 @@ export class UploadCleanupService {
   private async listUploadSessions(): Promise<UploadSession[]> {
     const uploadsDir = join(this.config.rootDirectory, "uploads");
     const sessions: UploadSession[] = [];
+    const globPattern = join(uploadsDir, "*");
 
     try {
-      // Check if uploads directory exists
-      try {
-        await Deno.stat(uploadsDir);
-      } catch (error) {
-        if (error instanceof Deno.errors.NotFound) {
-          // No uploads directory yet, return empty list
-          return [];
-        }
-        throw error;
-      }
-
-      // Read all upload session directories
-      for await (const entry of Deno.readDir(uploadsDir)) {
+      // Use expandGlob to find all session directories
+      for await (
+        const entry of expandGlob(globPattern, {
+          includeDirs: true,
+        })
+      ) {
         if (!entry.isDirectory) {
           continue;
         }
 
-        const sessionPath = join(uploadsDir, entry.name);
+        const sessionPath = entry.path;
         const startedAtPath = join(sessionPath, "startedat");
 
         try {
@@ -178,6 +173,10 @@ export class UploadCleanupService {
         }
       }
     } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        // No uploads directory yet, return empty list
+        return [];
+      }
       console.error("Error listing upload sessions:", error);
     }
 

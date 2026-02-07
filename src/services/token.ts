@@ -7,6 +7,7 @@
 
 import { verify } from "djwt";
 import type { Payload } from "djwt";
+import { decodeBase64 } from "@std/encoding/base64";
 import type { TokenAuthConfig } from "../config.ts";
 
 /**
@@ -83,10 +84,7 @@ export class TokenService {
       .replace(/\s/g, "");
 
     // Decode base64
-    const binaryDer = Uint8Array.from(
-      atob(pemContents),
-      (c) => c.charCodeAt(0),
-    );
+    const binaryDer = decodeBase64(pemContents);
 
     // Import as CryptoKey - try RS256 first, then ES256
     try {

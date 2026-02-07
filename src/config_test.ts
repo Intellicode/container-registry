@@ -1,4 +1,5 @@
 import { assertEquals, assertNotEquals } from "@std/assert";
+import { resolve } from "@std/path";
 import { getConfig, loadConfig, resetConfig } from "./config.ts";
 
 Deno.test("config: defaults are correct", () => {
@@ -18,7 +19,7 @@ Deno.test("config: defaults are correct", () => {
     const config = loadConfig();
     assertEquals(config.server.host, "0.0.0.0");
     assertEquals(config.server.port, 15000);
-    assertEquals(config.storage.rootDirectory, "./data");
+    assertEquals(config.storage.rootDirectory, resolve("./data"));
     assertEquals(config.log.level, "info");
   } finally {
     // Restore environment

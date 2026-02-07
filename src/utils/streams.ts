@@ -2,6 +2,8 @@
  * Stream utilities for reading and transforming streams.
  */
 
+import { concat } from "@std/bytes";
+
 /**
  * Converts a ReadableStream to a Uint8Array by collecting all chunks.
  *
@@ -14,32 +16,8 @@
 export async function streamToUint8Array(
   stream: ReadableStream<Uint8Array>,
 ): Promise<Uint8Array> {
-  const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
-  let totalLength = 0;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      // Copy the chunk to ensure it's backed by ArrayBuffer (not SharedArrayBuffer)
-      chunks.push(new Uint8Array(value));
-      totalLength += value.length;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  // Combine all chunks into a single Uint8Array with proper ArrayBuffer
-  const buffer = new ArrayBuffer(totalLength);
-  const result = new Uint8Array(buffer);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-
-  return result;
+  const chunks = await Array.fromAsync(stream);
+  return concat(chunks);
 }
 
 /**

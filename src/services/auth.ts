@@ -5,6 +5,7 @@
  * Supports HTTP Basic Authentication for the container registry.
  */
 
+import { decodeBase64 } from "@std/encoding/base64";
 import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 /**
@@ -123,7 +124,8 @@ export class AuthService {
     try {
       // Extract and decode base64 credentials
       const base64Credentials = authHeader.slice(6); // Remove "Basic " prefix
-      const credentials = atob(base64Credentials);
+      const bytes = decodeBase64(base64Credentials);
+      const credentials = new TextDecoder().decode(bytes);
 
       // Split on first colon (password might contain colons)
       const colonIndex = credentials.indexOf(":");

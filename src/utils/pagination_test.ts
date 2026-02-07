@@ -50,15 +50,18 @@ Deno.test("parsePaginationParams - includes last parameter", () => {
 
 Deno.test("buildPaginationLink - builds correct link format", () => {
   const link = buildPaginationLink("/v2/_catalog", 10, "myrepo");
-  assertEquals(link, "</v2/_catalog?n=10&last=myrepo>; rel=\"next\"");
+  assertEquals(link, '</v2/_catalog?n=10&last=myrepo>; rel="next"');
 });
 
 Deno.test("buildPaginationLink - URL encodes last parameter", () => {
   const link = buildPaginationLink("/v2/test/tags/list", 10, "v1.0.0");
-  assertEquals(link, "</v2/test/tags/list?n=10&last=v1.0.0>; rel=\"next\"");
-  
+  assertEquals(link, '</v2/test/tags/list?n=10&last=v1.0.0>; rel="next"');
+
   const linkWithSpecial = buildPaginationLink("/v2/_catalog", 10, "org/repo");
-  assertEquals(linkWithSpecial, "</v2/_catalog?n=10&last=org%2Frepo>; rel=\"next\"");
+  assertEquals(
+    linkWithSpecial,
+    '</v2/_catalog?n=10&last=org%2Frepo>; rel="next"',
+  );
 });
 
 Deno.test("applyPagination - returns all items when fewer than limit", () => {
