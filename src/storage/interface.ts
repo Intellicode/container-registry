@@ -15,6 +15,11 @@ export interface StorageDriver {
    * Retrieve a blob by digest
    * @param digest - The digest of the blob
    * @returns ReadableStream of blob content, or null if not found
+   *
+   * IMPORTANT: The caller MUST either fully consume the stream or call
+   * stream.cancel() to allow the implementation to release any underlying
+   * resources (e.g., file handles in a filesystem-based driver). Failure to
+   * do so may result in resource leaks.
    */
   getBlob(digest: string): Promise<ReadableStream<Uint8Array> | null>;
 

@@ -448,6 +448,10 @@ export function createBlobRoutes(): Hono {
     );
     const hasExistingData = existingSize > 0;
 
+    // Track resources for cleanup on error (declared outside try block for catch access)
+    let openedFile: Deno.FsFile | null = null;
+    let digestBranch: ReadableStream<Uint8Array> | null = null;
+
     try {
       // Parse digest to get the algorithm
       const parsedDigest = parseDigest(digest);
@@ -463,43 +467,80 @@ export function createBlobRoutes(): Hono {
         // Need to combine existing data file with incoming body
         const dataPath = getUploadDataPath(uuid, config.storage.rootDirectory);
         const existingFile = await Deno.open(dataPath, { read: true });
+        openedFile = existingFile;
+
+        // Track stream state and readers outside pull() for proper backpressure
+        let existingStreamConsumed = false;
+        let bodyStreamConsumed = false;
+        let existingReader: ReadableStreamDefaultReader<Uint8Array> | null =
+          null;
+        let bodyReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
         // Create a stream that reads existing data first, then the body
+        // Each pull() reads one chunk to respect backpressure
         finalStream = new ReadableStream({
-          async start(controller) {
-            // Read and enqueue existing data
-            const existingReader = existingFile.readable.getReader();
-            try {
-              while (true) {
-                const { done, value } = await existingReader.read();
-                if (done) break;
-                controller.enqueue(value);
+          async pull(controller) {
+            // First, read from existing file one chunk at a time
+            if (!existingStreamConsumed) {
+              if (!existingReader) {
+                existingReader = existingFile.readable.getReader();
               }
-            } finally {
+              const { done, value } = await existingReader.read();
+              if (done) {
+                existingReader.releaseLock();
+                existingReader = null;
+                existingStreamConsumed = true;
+              } else {
+                controller.enqueue(value);
+                return; // Wait for next pull
+              }
+            }
+
+            // Then, read from body one chunk at a time
+            if (!bodyStreamConsumed && body) {
+              if (!bodyReader) {
+                bodyReader = body.getReader();
+              }
+              const { done, value } = await bodyReader.read();
+              if (done) {
+                bodyReader.releaseLock();
+                bodyReader = null;
+                bodyStreamConsumed = true;
+              } else {
+                controller.enqueue(value);
+                return; // Wait for next pull
+              }
+            }
+
+            // Both streams consumed, close the combined stream
+            controller.close();
+          },
+          cancel() {
+            // Ensure file handle is closed if stream is cancelled
+            if (existingReader) {
               existingReader.releaseLock();
             }
-
-            // Read and enqueue new body data
-            if (body) {
-              const bodyReader = body.getReader();
+            if (!existingStreamConsumed) {
               try {
-                while (true) {
-                  const { done, value } = await bodyReader.read();
-                  if (done) break;
-                  controller.enqueue(value);
-                }
-              } finally {
-                bodyReader.releaseLock();
+                existingFile.close();
+              } catch {
+                // File may already be closed
               }
             }
-
-            controller.close();
+            // Cancel body stream if not consumed
+            if (bodyReader) {
+              bodyReader.releaseLock();
+            }
+            if (!bodyStreamConsumed && body) {
+              body.cancel().catch(() => {});
+            }
           },
         });
       } else if (hasExistingData && !body) {
         // Case 2: Has existing data from PATCH, no body in PUT (all data already uploaded)
         const dataPath = getUploadDataPath(uuid, config.storage.rootDirectory);
         const existingFile = await Deno.open(dataPath, { read: true });
+        openedFile = existingFile;
         finalStream = existingFile.readable;
       } else if (!hasExistingData && body) {
         // Case 3: No existing data, body in PUT (monolithic upload)
@@ -510,22 +551,21 @@ export function createBlobRoutes(): Hono {
         return digestInvalid(digest, "request body is empty");
       }
 
-      // Create digest stream to compute hash while streaming data
-      // This approach uses stream tee'ing to simultaneously:
-      // 1. Calculate the digest (without re-reading from disk)
-      // 2. Write to temporary staging file
-      // 3. Stream to final storage location
-      // This reduces memory pressure by avoiding buffering the entire blob,
-      // and eliminates redundant disk I/O from re-reading the uploaded file.
+      // Create digest stream to compute hash while streaming data.
+      // This uses a 2-way tee to process the stream in parallel:
+      // 1. Calculate the digest via TransformStream
+      // 2. Stream to storage (putBlob handles atomic temp-file writes internally)
+      // This avoids re-reading data from disk for digest verification.
       const { stream: digestStream, digest: digestPromise } =
         createDigestStream(
           parsedDigest.algorithm,
         );
 
-      // Create a three-way tee to process the stream in parallel
+      // Create a two-way tee to process the stream in parallel
       // Branch 1: Digest calculation
       // Branch 2: Storage (will be consumed by putBlob)
-      const [digestBranch, storageBranch] = finalStream.tee();
+      let storageBranch: ReadableStream<Uint8Array>;
+      [digestBranch, storageBranch] = finalStream.tee();
 
       // Start digest calculation in background
       const computeDigestTask = digestBranch
@@ -538,6 +578,8 @@ export function createBlobRoutes(): Hono {
 
       // Wait for digest calculation to complete
       await computeDigestTask;
+      // Mark digestBranch as consumed so catch block doesn't try to cancel it
+      digestBranch = null;
       const computedDigest = await digestPromise;
 
       // Verify digest matches
@@ -566,7 +608,23 @@ export function createBlobRoutes(): Hono {
 
       return c.body(null, 201);
     } catch (error) {
-      // Clean up on error
+      // Clean up resources on error
+      // Cancel any unconsumed tee'd stream to prevent resource leaks
+      if (digestBranch) {
+        // Attach a catch handler so cancellation-triggered rejections
+        // (for example from a background pipeTo task) are not unhandled.
+        digestBranch.cancel().catch(() => {
+          // Ignore cancel errors during cleanup
+        });
+      }
+      // Close file handle if stream wasn't fully consumed
+      if (openedFile) {
+        try {
+          openedFile.close();
+        } catch {
+          // File may already be closed via readable consumption
+        }
+      }
       await cleanupUpload(uuid, config.storage.rootDirectory);
       throw error;
     }
@@ -606,48 +664,8 @@ export function createBlobRoutes(): Hono {
   });
 
   /**
-   * HEAD /v2/<name>/blobs/<digest>
-   * Check if a blob exists.
-   */
-  blobs.on("HEAD", "/:name{.+}/blobs/:digest", async (c: Context) => {
-    const name = c.req.param("name");
-    const digest = c.req.param("digest");
-
-    // Validate repository name
-    if (!validateRepositoryName(name)) {
-      return nameInvalid(
-        name,
-        REPOSITORY_NAME_ERROR_MESSAGE,
-      );
-    }
-
-    // Validate digest format
-    if (!isValidDigest(digest)) {
-      return digestInvalid(digest, "invalid digest format");
-    }
-
-    // Check if blob exists in storage
-    const exists = await storage.hasBlob(digest);
-    if (!exists) {
-      return blobUnknown(digest);
-    }
-
-    // Get blob size
-    const size = await storage.getBlobSize(digest);
-    if (size === null) {
-      return blobUnknown(digest);
-    }
-
-    // Return 200 OK with headers
-    c.header("Content-Length", size.toString());
-    c.header("Docker-Content-Digest", digest);
-
-    return c.body(null, 200);
-  });
-
-  /**
    * GET /v2/<name>/blobs/<digest>
-   * Download a blob.
+   * Download a blob (also handles HEAD requests).
    */
   blobs.get("/:name{.+}/blobs/:digest", async (c: Context) => {
     const name = c.req.param("name");
@@ -665,6 +683,24 @@ export function createBlobRoutes(): Hono {
     // Validate digest format
     if (!isValidDigest(digest)) {
       return digestInvalid(digest, "invalid digest format");
+    }
+
+    // Handle HEAD requests without opening the blob file.
+    // Hono routes HEAD requests to GET handlers, so we need to handle this explicitly
+    // to avoid opening a file stream that would be discarded (causing resource leaks).
+    if (c.req.method === "HEAD") {
+      const exists = await storage.hasBlob(digest);
+      if (!exists) {
+        return blobUnknown(digest);
+      }
+      const size = await storage.getBlobSize(digest);
+      if (size === null) {
+        return blobUnknown(digest);
+      }
+      c.header("Content-Length", size.toString());
+      c.header("Content-Type", "application/octet-stream");
+      c.header("Docker-Content-Digest", digest);
+      return c.body(null, 200);
     }
 
     // Get blob stream

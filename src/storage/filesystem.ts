@@ -264,7 +264,48 @@ export class FilesystemStorage implements StorageDriver {
     try {
       const path = this.getBlobPath(digest);
       const file = await Deno.open(path, { read: true });
-      return file.readable;
+
+      // Wrap the file's readable stream to ensure the file handle is closed
+      // both on normal completion and on cancellation. This allows tests to
+      // keep resource sanitization enabled.
+      const reader = file.readable.getReader();
+      let closed = false;
+
+      return new ReadableStream({
+        async pull(controller) {
+          try {
+            const { done, value } = await reader.read();
+            if (done) {
+              controller.close();
+              if (!closed) {
+                closed = true;
+                reader.releaseLock();
+                file.close();
+              }
+            } else {
+              controller.enqueue(value);
+            }
+          } catch (error) {
+            if (!closed) {
+              closed = true;
+              reader.releaseLock();
+              try {
+                file.close();
+              } catch {
+                // Ignore close errors
+              }
+            }
+            controller.error(error);
+          }
+        },
+        cancel() {
+          if (!closed) {
+            closed = true;
+            reader.releaseLock();
+            file.close();
+          }
+        },
+      });
     } catch (error) {
       if (error instanceof Deno.errors.NotFound) {
         return null;

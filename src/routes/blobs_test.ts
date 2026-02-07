@@ -55,48 +55,38 @@ async function readStream(stream: ReadableStream): Promise<Uint8Array> {
   return result;
 }
 
-Deno.test({
-  name: "HEAD /v2/<name>/blobs/<digest> - blob exists",
-  sanitizeResources: false, // Disable resource leak detection for this test
-  fn: async () => {
-    const testDir = await createTestDir();
+Deno.test("HEAD /v2/<name>/blobs/<digest> - blob exists", async () => {
+  const testDir = await createTestDir();
 
-    try {
-      Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
-      resetConfig();
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
 
-      const storage = new FilesystemStorage(testDir);
-      const blobData = new TextEncoder().encode("test blob content");
-      const digest =
-        "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const storage = new FilesystemStorage(testDir);
+    const blobData = new TextEncoder().encode("test blob content");
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
-      await storage.putBlob(digest, createStream(blobData));
+    await storage.putBlob(digest, createStream(blobData));
 
-      const app = createBlobRoutes();
+    const app = createBlobRoutes();
 
-      const req = new Request("http://localhost/myrepo/blobs/" + digest, {
-        method: "HEAD",
-      });
+    const req = new Request("http://localhost/myrepo/blobs/" + digest, {
+      method: "HEAD",
+    });
 
-      const res = await app.fetch(req);
+    const res = await app.fetch(req);
 
-      assertEquals(res.status, 200);
-      assertEquals(
-        res.headers.get("Content-Length"),
-        blobData.length.toString(),
-      );
-      assertEquals(res.headers.get("Docker-Content-Digest"), digest);
-
-      // Consume and cancel the body stream to prevent file handle leak
-      // Even for HEAD requests, the response might have a body stream
-      if (res.body) {
-        await res.body.cancel();
-      }
-    } finally {
-      resetConfig();
-      await cleanupTestDir(testDir);
-    }
-  },
+    assertEquals(res.status, 200);
+    assertEquals(
+      res.headers.get("Content-Length"),
+      blobData.length.toString(),
+    );
+    assertEquals(res.headers.get("Docker-Content-Digest"), digest);
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
 });
 
 Deno.test("HEAD /v2/<name>/blobs/<digest> - blob not found", async () => {
@@ -147,7 +137,7 @@ Deno.test("HEAD /v2/<name>/blobs/<digest> - invalid digest", async () => {
   }
 });
 
-Deno.test({ name: "GET /v2/<name>/blobs/<digest> - download blob", sanitizeResources: false }, async () => {
+Deno.test("GET /v2/<name>/blobs/<digest> - download blob", async () => {
   const testDir = await createTestDir();
 
   try {
@@ -168,7 +158,10 @@ Deno.test({ name: "GET /v2/<name>/blobs/<digest> - download blob", sanitizeResou
     const res = await app.fetch(req);
 
     assertEquals(res.status, 200);
-    assertEquals(res.headers.get("Content-Length"), blobData.length.toString());
+    assertEquals(
+      res.headers.get("Content-Length"),
+      blobData.length.toString(),
+    );
     assertEquals(res.headers.get("Content-Type"), "application/octet-stream");
     assertEquals(res.headers.get("Docker-Content-Digest"), digest);
 
@@ -206,105 +199,97 @@ Deno.test("GET /v2/<name>/blobs/<digest> - blob not found", async () => {
   }
 });
 
-Deno.test({
-  name: "GET /v2/<name>/blobs/<digest> - range request",
-  sanitizeResources: false, // Disable resource leak detection for this test
-  fn: async () => {
-    const testDir = await createTestDir();
+Deno.test("GET /v2/<name>/blobs/<digest> - range request", async () => {
+  const testDir = await createTestDir();
 
-    try {
-      Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
-      resetConfig();
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
 
-      const storage = new FilesystemStorage(testDir);
-      const blobData = new TextEncoder().encode(
-        "0123456789abcdefghijklmnopqrstuvwxyz",
-      );
-      const digest =
-        "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const storage = new FilesystemStorage(testDir);
+    const blobData = new TextEncoder().encode(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+    );
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
-      await storage.putBlob(digest, createStream(blobData));
+    await storage.putBlob(digest, createStream(blobData));
 
-      const app = createBlobRoutes();
+    const app = createBlobRoutes();
 
-      const req = new Request("http://localhost/myrepo/blobs/" + digest, {
-        headers: {
-          "Range": "bytes=0-9",
-        },
-      });
+    const req = new Request("http://localhost/myrepo/blobs/" + digest, {
+      headers: {
+        "Range": "bytes=0-9",
+      },
+    });
 
-      const res = await app.fetch(req);
+    const res = await app.fetch(req);
 
-      assertEquals(res.status, 206);
-      assertEquals(res.headers.get("Content-Length"), "10");
-      assertEquals(
-        res.headers.get("Content-Range"),
-        `bytes 0-9/${blobData.length}`,
-      );
-      assertEquals(res.headers.get("Docker-Content-Digest"), digest);
+    assertEquals(res.status, 206);
+    assertEquals(res.headers.get("Content-Length"), "10");
+    assertEquals(
+      res.headers.get("Content-Range"),
+      `bytes 0-9/${blobData.length}`,
+    );
+    assertEquals(res.headers.get("Docker-Content-Digest"), digest);
 
-      if (res.body) {
-        const content = await readStream(res.body);
-        const expected = new TextEncoder().encode("0123456789");
-        assertEquals(content, expected);
-      }
-    } finally {
-      resetConfig();
-      await cleanupTestDir(testDir);
+    if (res.body) {
+      const content = await readStream(res.body);
+      const expected = new TextEncoder().encode("0123456789");
+      assertEquals(content, expected);
     }
-  },
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
 });
 
-Deno.test({
-  name: "GET /v2/<name>/blobs/<digest> - range request to end",
-  sanitizeResources: false, // Disable resource leak detection for this test
-  fn: async () => {
-    const testDir = await createTestDir();
+Deno.test("GET /v2/<name>/blobs/<digest> - range request to end", async () => {
+  const testDir = await createTestDir();
 
-    try {
-      Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
-      resetConfig();
+  try {
+    Deno.env.set("REGISTRY_STORAGE_PATH", testDir);
+    resetConfig();
 
-      const storage = new FilesystemStorage(testDir);
-      const blobData = new TextEncoder().encode(
-        "0123456789abcdefghijklmnopqrstuvwxyz",
-      );
-      const digest =
-        "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+    const storage = new FilesystemStorage(testDir);
+    const blobData = new TextEncoder().encode(
+      "0123456789abcdefghijklmnopqrstuvwxyz",
+    );
+    const digest =
+      "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
-      await storage.putBlob(digest, createStream(blobData));
+    await storage.putBlob(digest, createStream(blobData));
 
-      const app = createBlobRoutes();
+    const app = createBlobRoutes();
 
-      const req = new Request("http://localhost/myrepo/blobs/" + digest, {
-        headers: {
-          "Range": "bytes=30-",
-        },
-      });
+    const req = new Request("http://localhost/myrepo/blobs/" + digest, {
+      headers: {
+        "Range": "bytes=30-",
+      },
+    });
 
-      const res = await app.fetch(req);
+    const res = await app.fetch(req);
 
-      assertEquals(res.status, 206);
-      const expectedLength = blobData.length - 30;
-      assertEquals(
-        res.headers.get("Content-Length"),
-        expectedLength.toString(),
-      );
-      assertEquals(
-        res.headers.get("Content-Range"),
-        `bytes 30-${blobData.length - 1}/${blobData.length}`,
-      );
+    assertEquals(res.status, 206);
+    const expectedLength = blobData.length - 30;
+    assertEquals(
+      res.headers.get("Content-Length"),
+      expectedLength.toString(),
+    );
+    assertEquals(
+      res.headers.get("Content-Range"),
+      `bytes 30-${blobData.length - 1}/${blobData.length}`,
+    );
 
-      if (res.body) {
-        const content = await readStream(res.body);
-        const expected = new TextEncoder().encode("uvwxyz");
-        assertEquals(content, expected);
-      }
-    } finally {
-      resetConfig();
-      await cleanupTestDir(testDir);
+    if (res.body) {
+      const content = await readStream(res.body);
+      const expected = new TextEncoder().encode("uvwxyz");
+      assertEquals(content, expected);
     }
-  },
+  } finally {
+    resetConfig();
+    await cleanupTestDir(testDir);
+  }
 });
 
 Deno.test("GET /v2/<name>/blobs/<digest> - invalid range request", async () => {
@@ -332,6 +317,10 @@ Deno.test("GET /v2/<name>/blobs/<digest> - invalid range request", async () => {
     const res = await app.fetch(req);
 
     assertEquals(res.status, 416);
+    // Consume response body to release any resources
+    if (res.body) {
+      await res.body.cancel();
+    }
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);
@@ -374,13 +363,23 @@ Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload first chunk", async ()
     const app = createBlobRoutes();
 
     // Initiate upload
-    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
-      method: "POST",
-    });
+    const initiateReq = new Request(
+      "http://localhost/myrepo/blobs/uploads/",
+      {
+        method: "POST",
+      },
+    );
     const initiateRes = await app.fetch(initiateReq);
     assertEquals(initiateRes.status, 202);
+    // Consume response body to release resources
+    if (initiateRes.body) {
+      await initiateRes.body.cancel();
+    }
 
-    const uploadUrl = initiateRes.headers.get("Location")?.replace(/^\/v2/, "");
+    const uploadUrl = initiateRes.headers.get("Location")?.replace(
+      /^\/v2/,
+      "",
+    );
     const uuid = initiateRes.headers.get("Docker-Upload-UUID");
 
     // Upload first chunk
@@ -403,13 +402,17 @@ Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload first chunk", async ()
     );
     assertEquals(patchRes.headers.get("Docker-Upload-UUID"), uuid);
     assertEquals(patchRes.headers.get("Range"), "0-5");
+    // Consume response body to release resources
+    if (patchRes.body) {
+      await patchRes.body.cancel();
+    }
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);
   }
 });
 
-Deno.test({ name: "PATCH /v2/<name>/blobs/uploads/<uuid> - upload multiple chunks", sanitizeResources: false }, async () => {
+Deno.test("PATCH /v2/<name>/blobs/uploads/<uuid> - upload multiple chunks", async () => {
   const testDir = await createTestDir();
 
   try {
@@ -419,12 +422,22 @@ Deno.test({ name: "PATCH /v2/<name>/blobs/uploads/<uuid> - upload multiple chunk
     const app = createBlobRoutes();
 
     // Initiate upload
-    const initiateReq = new Request("http://localhost/myrepo/blobs/uploads/", {
-      method: "POST",
-    });
+    const initiateReq = new Request(
+      "http://localhost/myrepo/blobs/uploads/",
+      {
+        method: "POST",
+      },
+    );
     const initiateRes = await app.fetch(initiateReq);
     assertEquals(initiateRes.status, 202);
-    const uploadUrl = initiateRes.headers.get("Location")?.replace(/^\/v2/, "");
+    // Consume response body to release resources
+    if (initiateRes.body) {
+      await initiateRes.body.cancel();
+    }
+    const uploadUrl = initiateRes.headers.get("Location")?.replace(
+      /^\/v2/,
+      "",
+    );
 
     // Upload first chunk
     const chunk1 = new TextEncoder().encode("Hello ");
@@ -438,6 +451,10 @@ Deno.test({ name: "PATCH /v2/<name>/blobs/uploads/<uuid> - upload multiple chunk
     const patch1Res = await app.fetch(patch1Req);
     assertEquals(patch1Res.status, 202);
     assertEquals(patch1Res.headers.get("Range"), "0-5");
+    // Consume response body to release resources
+    if (patch1Res.body) {
+      await patch1Res.body.cancel();
+    }
 
     // Upload second chunk
     const chunk2 = new TextEncoder().encode("World!");
@@ -451,6 +468,10 @@ Deno.test({ name: "PATCH /v2/<name>/blobs/uploads/<uuid> - upload multiple chunk
     const patch2Res = await app.fetch(patch2Req);
     assertEquals(patch2Res.status, 202);
     assertEquals(patch2Res.headers.get("Range"), "0-11");
+    // Consume response body to release resources
+    if (patch2Res.body) {
+      await patch2Res.body.cancel();
+    }
   } finally {
     resetConfig();
     await cleanupTestDir(testDir);
@@ -1253,7 +1274,10 @@ Deno.test("POST /v2/<name>/blobs/uploads/ - mount across different repositories"
 
     // Should successfully mount
     assertEquals(mountRes.status, 201);
-    assertEquals(mountRes.headers.get("Location"), `/v2/target/blobs/${digest}`);
+    assertEquals(
+      mountRes.headers.get("Location"),
+      `/v2/target/blobs/${digest}`,
+    );
     assertEquals(mountRes.headers.get("Docker-Content-Digest"), digest);
 
     // Verify the layer link was created in the target repository
