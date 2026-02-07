@@ -7,6 +7,11 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import { FilesystemStorage } from "../storage/filesystem.ts";
 import { getConfig } from "../config.ts";
+import {
+  applyPagination,
+  buildPaginationLink,
+  parsePaginationParams,
+} from "../utils/pagination.ts";
 
 /**
  * Creates the catalog routes handler.
@@ -25,39 +30,30 @@ export function createCatalogRoutes(): Hono {
    */
   catalog.get("/_catalog", async (c: Context) => {
     // Parse pagination parameters
-    const nParam = c.req.query("n");
-    const lastParam = c.req.query("last");
-
-    let limit: number | undefined;
-    if (nParam) {
-      const parsed = parseInt(nParam, 10);
-      if (isNaN(parsed) || parsed <= 0) {
-        limit = config.pagination.defaultLimit;
-      } else {
-        // Enforce maximum limit
-        limit = Math.min(parsed, config.pagination.maxLimit);
-      }
-    } else {
-      limit = config.pagination.defaultLimit;
-    }
+    const pagination = parsePaginationParams(
+      c.req.query("n"),
+      c.req.query("last"),
+    );
 
     // Get repositories from storage with pagination
     const repositories = await storage.listRepositories({
-      limit: limit + 1, // Fetch one extra to check if there are more results
-      last: lastParam,
+      limit: pagination.limit + 1, // Fetch one extra to check if there are more results
+      last: pagination.last,
     });
 
-    // Check if there are more results
-    const hasMore = repositories.length > limit;
-    const repos = hasMore ? repositories.slice(0, limit) : repositories;
+    // Apply pagination
+    const { items: repos, hasMore } = applyPagination(
+      repositories,
+      pagination.limit,
+    );
 
     // Build Link header if there are more results
     if (hasMore && repos.length > 0) {
       const lastRepo = repos[repos.length - 1];
-      const linkUrl = `/v2/_catalog?n=${limit}&last=${
-        encodeURIComponent(lastRepo)
-      }`;
-      c.header("Link", `<${linkUrl}>; rel="next"`);
+      c.header(
+        "Link",
+        buildPaginationLink("/v2/_catalog", pagination.limit, lastRepo),
+      );
     }
 
     // Return catalog response

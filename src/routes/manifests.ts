@@ -24,37 +24,11 @@ import type {
   ManifestMediaType,
 } from "../types/oci.ts";
 import { ManifestMediaTypes } from "../types/oci.ts";
-
-/**
- * Validates repository name according to OCI distribution spec.
- * Centralizes validation logic to match FilesystemStorage requirements.
- * Format: [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*
- */
-function validateRepositoryName(name: string): boolean {
-  if (!name) {
-    return false;
-  }
-
-  const components = name.split("/");
-  for (const component of components) {
-    if (!component) {
-      return false;
-    }
-    // Each component must match [a-z0-9]+([._-][a-z0-9]+)*
-    if (!/^[a-z0-9]+([._-][a-z0-9]+)*$/.test(component)) {
-      return false;
-    }
-    // Reject path traversal
-    if (component === "." || component === "..") {
-      return false;
-    }
-  }
-  // Additional safety: ensure no backslashes or other path separators
-  if (name.includes("\\") || name.includes("\0")) {
-    return false;
-  }
-  return true;
-}
+import {
+  REPOSITORY_NAME_ERROR_MESSAGE,
+  validateRepositoryName,
+} from "../utils/validation.ts";
+import { streamToUint8Array } from "../utils/streams.ts";
 
 /**
  * Check if a media type is supported for manifests.
@@ -331,7 +305,7 @@ export function createManifestRoutes(): Hono {
     if (!validateRepositoryName(name)) {
       return nameInvalid(
         name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+        REPOSITORY_NAME_ERROR_MESSAGE,
       );
     }
 
@@ -387,7 +361,7 @@ export function createManifestRoutes(): Hono {
     if (!validateRepositoryName(name)) {
       return nameInvalid(
         name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+        REPOSITORY_NAME_ERROR_MESSAGE,
       );
     }
 
@@ -412,28 +386,7 @@ export function createManifestRoutes(): Hono {
     }
 
     // Read body as Uint8Array (preserve raw bytes for digest calculation)
-    const reader = body.getReader();
-    const chunks: Uint8Array[] = [];
-    let totalLength = 0;
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        totalLength += value.length;
-      }
-    } finally {
-      reader.releaseLock();
-    }
-
-    // Combine chunks
-    const content = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      content.set(chunk, offset);
-      offset += chunk.length;
-    }
+    const content = await streamToUint8Array(body);
 
     // Parse and validate manifest JSON
     const decoder = new TextDecoder();
@@ -501,7 +454,7 @@ export function createManifestRoutes(): Hono {
     if (!validateRepositoryName(name)) {
       return nameInvalid(
         name,
-        "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+        REPOSITORY_NAME_ERROR_MESSAGE,
       );
     }
 
@@ -542,7 +495,7 @@ export function createManifestRoutes(): Hono {
       if (!validateRepositoryName(name)) {
         return nameInvalid(
           name,
-          "repository name must match [a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*",
+          REPOSITORY_NAME_ERROR_MESSAGE,
         );
       }
 
