@@ -1,6 +1,6 @@
 import { ensureDir, expandGlob } from "@std/fs";
 import { dirname, join, relative, resolve } from "@std/path";
-import type { StorageDriver } from "./interface.ts";
+import type { BlobMetadata, StorageDriver } from "./interface.ts";
 
 /**
  * Filesystem-based storage driver implementation.
@@ -714,5 +714,72 @@ export class FilesystemStorage implements StorageDriver {
     }
 
     return count;
+  }
+
+  /**
+   * List all blob digests in storage
+   * @returns Array of blob digests
+   */
+  async listBlobs(): Promise<string[]> {
+    const blobs: string[] = [];
+    const blobsPath = join(this.rootPath, "blobs");
+
+    try {
+      // Scan for all blob files: blobs/<algorithm>/<prefix>/<hash>
+      // The hash file (without extension) contains the blob data
+      for await (const algorithmEntry of Deno.readDir(blobsPath)) {
+        if (!algorithmEntry.isDirectory) continue;
+
+        const algorithm = algorithmEntry.name;
+        const algorithmPath = join(blobsPath, algorithm);
+
+        for await (const prefixEntry of Deno.readDir(algorithmPath)) {
+          if (!prefixEntry.isDirectory) continue;
+
+          const prefixPath = join(algorithmPath, prefixEntry.name);
+
+          for await (const hashEntry of Deno.readDir(prefixPath)) {
+            if (!hashEntry.isFile) continue;
+
+            // Skip temporary files
+            if (hashEntry.name.includes(".tmp.")) continue;
+
+            const digest = `${algorithm}:${hashEntry.name}`;
+            blobs.push(digest);
+          }
+        }
+      }
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
+
+    return blobs;
+  }
+
+  /**
+   * Get blob metadata including creation/modification time
+   * @param digest - The digest of the blob
+   * @returns Blob metadata or null if not found
+   */
+  async getBlobMetadata(digest: string): Promise<BlobMetadata | null> {
+    try {
+      const path = this.getBlobPath(digest);
+      const stat = await Deno.stat(path);
+
+      return {
+        digest,
+        size: stat.size,
+        // Use mtime (modification time) as creation time
+        // Filesystem doesn't reliably store creation time on all platforms
+        createdAt: stat.mtime || new Date(),
+      };
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        return null;
+      }
+      throw error;
+    }
   }
 }

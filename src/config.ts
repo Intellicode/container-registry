@@ -53,6 +53,13 @@ export interface AccessControlConfig {
   rules: AccessRule[];
 }
 
+export interface GarbageCollectionConfig {
+  enabled: boolean; // Enable scheduled GC
+  schedule: string; // Cron expression (e.g., "0 3 * * *")
+  dryRun: boolean; // Default to dry-run for safety
+  minAge: number; // Don't delete blobs newer than N seconds
+}
+
 export interface RegistryConfig {
   server: ServerConfig;
   storage: StorageConfig;
@@ -60,6 +67,7 @@ export interface RegistryConfig {
   auth: AuthConfig;
   pagination: PaginationConfig;
   access: AccessControlConfig;
+  gc: GarbageCollectionConfig;
 }
 
 function parsePort(portValue: string | undefined, defaultPort: number): number {
@@ -111,6 +119,15 @@ export function loadConfig(): RegistryConfig {
       ),
     },
     access: parseAccessControlConfig(),
+    gc: {
+      enabled: Deno.env.get("REGISTRY_GC_ENABLED")?.toLowerCase() === "true",
+      schedule: Deno.env.get("REGISTRY_GC_SCHEDULE") ?? "0 3 * * *", // 3 AM daily
+      dryRun: Deno.env.get("REGISTRY_GC_DRY_RUN")?.toLowerCase() !== "false", // Default to dry-run
+      minAge: parsePositiveInt(
+        Deno.env.get("REGISTRY_GC_MIN_AGE"),
+        3600, // 1 hour default - don't delete blobs newer than 1 hour
+      ),
+    },
   };
 }
 
