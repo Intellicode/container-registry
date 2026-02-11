@@ -5,6 +5,7 @@
 import { type Context, Hono, type Next } from "hono";
 import { RegistryError } from "./types/errors.ts";
 import { createV2Routes } from "./routes/v2.ts";
+import { createHealthRoutes } from "./routes/health.ts";
 import { isDevelopment } from "./middleware/errors.ts";
 import { createAuthService } from "./services/auth.ts";
 import { createTokenService } from "./services/token.ts";
@@ -115,6 +116,11 @@ export async function createApp(): Promise<
   // Add authorization middleware after authentication
   // This must come before v2 routes so it can check permissions
   app.use("/v2/*", createAuthorizationMiddleware(accessControlService));
+
+  // Mount health check routes at /health (no authentication required)
+  app.route("/health", createHealthRoutes({
+    storageRootDirectory: config.storage.rootDirectory,
+  }));
 
   // Mount v2 API routes at /v2
   // Note: Hono's route() adds the prefix, so routes defined in v2Routes are relative
