@@ -129,4 +129,27 @@ export interface StorageDriver {
   listRepositories(options?: { limit?: number; last?: string }): Promise<
     string[]
   >;
+
+  // Blob listing operations (for garbage collection)
+  /**
+   * List all blob digests in storage
+   * @returns Array of blob digests
+   */
+  listBlobs(): Promise<string[]>;
+
+  /**
+   * Get blob metadata including creation/modification time
+   * @param digest - The digest of the blob
+   * @returns Blob metadata or null if not found
+   */
+  getBlobMetadata(digest: string): Promise<BlobMetadata | null>;
+}
+
+/**
+ * Metadata for a blob in storage.
+ */
+export interface BlobMetadata {
+  digest: string;
+  size: number;
+  createdAt: Date;
 }
