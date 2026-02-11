@@ -3,7 +3,6 @@
  */
 
 import { type Context, Hono, type Next } from "hono";
-import { logger } from "hono/logger";
 import { RegistryError } from "./types/errors.ts";
 import { createV2Routes } from "./routes/v2.ts";
 import { isDevelopment } from "./middleware/errors.ts";
@@ -12,6 +11,7 @@ import { createTokenService } from "./services/token.ts";
 import { createUploadCleanupService } from "./services/upload-cleanup.ts";
 import { createAccessControlService } from "./services/access-control.ts";
 import { createAuthorizationMiddleware } from "./middleware/authorization.ts";
+import { createLoggingMiddleware, getLogger } from "./middleware/logging.ts";
 import { getConfig } from "./config.ts";
 
 /**
@@ -26,27 +26,32 @@ export async function createApp(): Promise<
 
   // Initialize auth service if needed
   const config = getConfig();
+  const logger = getLogger(config.log);
   let authService;
   let tokenService;
 
   if (config.auth.type === "basic" && config.auth.htpasswd) {
     try {
       authService = await createAuthService(config.auth.htpasswd);
-      console.log(
-        `Loaded ${authService.getCredentialCount()} users from htpasswd file`,
-      );
+      logger.info("basic auth initialized", {
+        user_count: authService.getCredentialCount(),
+      });
     } catch (error) {
-      console.error(`Failed to initialize auth service: ${error}`);
+      logger.error("failed to initialize auth service", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   } else if (config.auth.type === "token" && config.auth.token) {
     try {
       tokenService = await createTokenService(config.auth.token);
-      console.log(
-        `Token service initialized with issuer: ${config.auth.token.issuer}`,
-      );
+      logger.info("token service initialized", {
+        issuer: config.auth.token.issuer,
+      });
     } catch (error) {
-      console.error(`Failed to initialize token service: ${error}`);
+      logger.error("failed to initialize token service", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }
@@ -54,13 +59,11 @@ export async function createApp(): Promise<
   // Initialize access control service
   const accessControlService = createAccessControlService(config.access);
   if (accessControlService.isEnabled()) {
-    console.log(
-      `Access control enabled with ${config.access.rules.length} rules`,
-    );
-    console.log(`Default policy: ${config.access.defaultPolicy}`);
-    console.log(
-      `Admin users: ${config.access.adminUsers.join(", ") || "none"}`,
-    );
+    logger.info("access control enabled", {
+      rule_count: config.access.rules.length,
+      default_policy: config.access.defaultPolicy,
+      admin_users: config.access.adminUsers,
+    });
   }
 
   // Initialize upload cleanup service
@@ -72,7 +75,14 @@ export async function createApp(): Promise<
 
   // Configure error handler
   app.onError((err, c) => {
-    console.error("Error handling request:", err);
+    // Get request-scoped logger if available, otherwise use app logger
+    // deno-lint-ignore no-explicit-any
+    const reqLogger = (c as any).get("logger") || logger;
+    reqLogger.error("unhandled error", {
+      error: err instanceof Error ? err.message : String(err),
+      method: c.req.method,
+      path: c.req.path,
+    });
 
     // Handle known registry errors
     if (err instanceof RegistryError) {
@@ -93,8 +103,8 @@ export async function createApp(): Promise<
     return c.json(body, 500);
   });
 
-  // Add request logging middleware
-  app.use("*", logger());
+  // Add structured logging middleware
+  app.use("*", createLoggingMiddleware(config.log));
 
   // Add Docker-Distribution-API-Version header to all responses
   app.use("*", async (c: Context, next: Next) => {

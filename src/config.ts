@@ -18,6 +18,7 @@ export interface StorageConfig {
 
 export interface LogConfig {
   level: "debug" | "info" | "warn" | "error";
+  format: "json" | "pretty";
 }
 
 export interface TokenAuthConfig {
@@ -91,6 +92,7 @@ export function loadConfig(): RegistryConfig {
     },
     log: {
       level: parseLogLevel(Deno.env.get("REGISTRY_LOG_LEVEL")),
+      format: parseLogFormat(Deno.env.get("REGISTRY_LOG_FORMAT")),
     },
     auth: {
       type: parseAuthType(Deno.env.get("REGISTRY_AUTH_TYPE")),
@@ -125,6 +127,16 @@ function parseLogLevel(
     case "info":
     default:
       return "info";
+  }
+}
+
+function parseLogFormat(format: string | undefined): "json" | "pretty" {
+  switch (format?.toLowerCase()) {
+    case "pretty":
+      return "pretty";
+    case "json":
+    default:
+      return "json";
   }
 }
 

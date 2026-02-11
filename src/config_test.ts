@@ -9,11 +9,13 @@ Deno.test("config: defaults are correct", () => {
   const originalPort = Deno.env.get("REGISTRY_PORT");
   const originalStorage = Deno.env.get("REGISTRY_STORAGE_PATH");
   const originalLevel = Deno.env.get("REGISTRY_LOG_LEVEL");
+  const originalFormat = Deno.env.get("REGISTRY_LOG_FORMAT");
 
   Deno.env.delete("REGISTRY_HOST");
   Deno.env.delete("REGISTRY_PORT");
   Deno.env.delete("REGISTRY_STORAGE_PATH");
   Deno.env.delete("REGISTRY_LOG_LEVEL");
+  Deno.env.delete("REGISTRY_LOG_FORMAT");
 
   try {
     const config = loadConfig();
@@ -21,12 +23,14 @@ Deno.test("config: defaults are correct", () => {
     assertEquals(config.server.port, 15000);
     assertEquals(config.storage.rootDirectory, resolve("./data"));
     assertEquals(config.log.level, "info");
+    assertEquals(config.log.format, "json");
   } finally {
     // Restore environment
     if (originalHost) Deno.env.set("REGISTRY_HOST", originalHost);
     if (originalPort) Deno.env.set("REGISTRY_PORT", originalPort);
     if (originalStorage) Deno.env.set("REGISTRY_STORAGE_PATH", originalStorage);
     if (originalLevel) Deno.env.set("REGISTRY_LOG_LEVEL", originalLevel);
+    if (originalFormat) Deno.env.set("REGISTRY_LOG_FORMAT", originalFormat);
   }
 });
 
@@ -96,6 +100,30 @@ Deno.test("config: log level parsing", () => {
   assertEquals(loadConfig().log.level, "info");
 
   Deno.env.delete("REGISTRY_LOG_LEVEL");
+});
+
+Deno.test("config: log format parsing", () => {
+  resetConfig();
+
+  // Test json format
+  Deno.env.set("REGISTRY_LOG_FORMAT", "json");
+  assertEquals(loadConfig().log.format, "json");
+
+  // Test pretty format
+  Deno.env.set("REGISTRY_LOG_FORMAT", "pretty");
+  assertEquals(loadConfig().log.format, "pretty");
+
+  // Test case insensitivity
+  Deno.env.set("REGISTRY_LOG_FORMAT", "PRETTY");
+  assertEquals(loadConfig().log.format, "pretty");
+
+  // Test invalid format (defaults to json)
+  Deno.env.set("REGISTRY_LOG_FORMAT", "invalid");
+  assertEquals(loadConfig().log.format, "json");
+
+  // Test default (json)
+  Deno.env.delete("REGISTRY_LOG_FORMAT");
+  assertEquals(loadConfig().log.format, "json");
 });
 
 Deno.test("config: singleton pattern", () => {
